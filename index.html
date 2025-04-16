@@ -2,19 +2,44 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Meine Seite</title>
+     <meta charset="UTF-8">
+     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+     <title>Meine Seite</title>
+     <style>
+        body {
+           font-family: Arial, sans-serif;
+        }
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        li {
+            margin: 10px 0;
+        }
+        iframe {
+            width: 32%;
+            height: 300px;
+            margin: 1%;
+            box-sizing: border-box;
+        }
+        .iframe-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+        }
+     </style>
 </head>
 <body>
-    <h1>Willkommen auf meiner Seite</h1>
-    <ul>
-        <li><a href="rangliste.json">Rangliste</a></li>
-        <li><a href="eloRangliste.json">Elo Rangliste</a></li>
-        <li><a href="eloRanglisteDetailed.json">Elo Rangliste Detailed</a></li>
-        <iframe src="rangliste.html" frameborder="0">rangliste.html</iframe>
-        <iframe src="eloRanglistePlayerGUI.html" frameborder="0">eloRanglistePlayerGUI.html</iframe>
-        <iframe src="eloRanglisteOverall.html" frameborder="0">eloRanglisteOverall.html</iframe>
-    </ul>
+     <h1>Willkommen auf meiner Seite</h1>
+     <ul>
+          <li><a href="rangliste.json">Rangliste</a></li>
+          <li><a href="eloRangliste.json">Elo Rangliste</a></li>
+          <li><a href="eloRanglisteDetailed.json">Elo Rangliste Detailed</a></li>
+     </ul>
+     <div class="iframe-container">
+          <iframe src="rangliste.html" frameborder="0">rangliste.html</iframe>
+          <iframe src="eloRanglistePlayerGUI.html" frameborder="0">eloRanglistePlayerGUI.html</iframe>
+          <iframe src="eloRanglisteOverall.html" frameborder="0">eloRanglisteOverall.html</iframe>
+     </div>
 </body>
 </html>
