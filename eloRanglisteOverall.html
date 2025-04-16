@@ -73,6 +73,9 @@
                     .sort((a, b) => elo_ratings[b][discipline] - elo_ratings[a][discipline]);
 
                 sortedPlayers.forEach((player, rank) => {
+                    if (elo_ratings === undefined || 
+                        elo_ratings[player] === undefined ||
+                        elo_ratings[player][discipline] === undefined) return; // Skip players without rating in the selected discipline
                     const elo = elo_ratings[player][discipline].toFixed(2);
                     const games = games_played[player][discipline];
                     const row = document.createElement('tr');

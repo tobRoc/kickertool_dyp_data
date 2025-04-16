@@ -109,10 +109,11 @@
                 rankingTable.innerHTML = '';
                 tableHeader.innerHTML = `<th>Disziplin</th><th>Platz</th><th>Spieler</th><th>Punkte</th>`;
 
-                const sortedPlayers = Object.keys(platzierungData)
-                    .filter(player => teilnahmenData[player][discipline][year] && teilnahmenData[player][discipline][year] > 0)
-                    .sort((a, b) => platzierungData[b][discipline][year] - platzierungData[a][discipline][year]);
 
+                const sortedPlayers = Object.keys(platzierungData)
+                    .filter(player => teilnahmenData[player][discipline] && teilnahmenData[player][discipline][year] !== undefined && teilnahmenData[player][discipline][year] > 0)
+                    .sort((a, b) => platzierungData[b][discipline][year] - platzierungData[a][discipline][year]);
+                
                 if (viewOption === 'Häufigkeiten') {
                     const maxPlatz = Math.max(...sortedPlayers.flatMap(player => turnierDetails[player][discipline][year].map(d => d[0])));
                     tableHeader.innerHTML += `${Array.from({ length: maxPlatz }, (_, i) => `<th>${i + 1}</th>`).join('')}`;
