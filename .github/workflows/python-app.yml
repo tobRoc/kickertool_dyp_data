@@ -41,6 +41,7 @@ jobs:
         mkdir _site
         cp index.html _site/
         cp rangliste.json _site/
+        cp eloRangliste.json _site/
         cp eloRanglisteDetailed.json _site/
         ls
         ls _site
@@ -50,6 +51,7 @@ jobs:
         name: json-artifacts
         path: |
           rangliste.json
+          eloRangliste.json
           eloRanglisteDetailed.json
     - name: Upload artifact
       uses: actions/upload-pages-artifact@v3
