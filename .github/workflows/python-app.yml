@@ -40,6 +40,9 @@ jobs:
         ls -lax
         mkdir _site
         cp index.html _site/
+        cp rangliste.html _site/
+        cp eloRanglistePlayerGUI.html _site/
+        cp eloRanglisteOverall.html _site/
         cp rangliste.json _site/
         cp eloRangliste.json _site/
         cp eloRanglisteDetailed.json _site/
