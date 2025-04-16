@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rangliste</title>
+    <style>
+        body { font-family: Arial, sans-serif; }
+        .container { width: 1200px; margin: 0 auto; }
+        .combobox, .option-menu { margin: 10px 0; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <label for="year">Jahr:</label>
+        <select id="year" class="combobox"></select>
+
+        <label for="discipline">Disziplin:</label>
+        <select id="discipline" class="combobox"></select>
+
+        <label for="view-option">Ansicht:</label>
+        <select id="view-option" class="option-menu">
+            <option value="Turnierdetails">Turnierdetails</option>
+            <option value="Häufigkeiten">Häufigkeiten</option>
+        </select>
+
+        <table id="ranking-table">
+            <thead>
+                <tr id="table-header">
+                    <th>Disziplin</th>
+                    <th>Platz</th>
+                    <th>Spieler</th>
+                    <th>Punkte</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <script>
+        async function fetchData() {
+            try {
+                const response = await fetch('rangliste.json');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+                return data;
+            } catch (error) {
+                console.error('Fehler beim Laden der Daten:', error);
+                return null;
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            const data = await fetchData();
+            if (!data) {
+                return;
+            }
+            const platzierungData = data.platzierungData;
+            const teilnahmenData = data.teilnahmenData;
+            const turnierDetails = data.turnierDetails;
+            const additionalDisciplines = data.additionalDisciplines;
+            const yearData = data.yearData;
+
+            const yearSelect = document.getElementById('year');
+            const disciplineSelect = document.getElementById('discipline');
+            const viewOptionSelect = document.getElementById('view-option');
+            const rankingTable = document.getElementById('ranking-table').getElementsByTagName('tbody')[0];
+            const tableHeader = document.getElementById('table-header');
+
+            const currentYear = new Date().getFullYear();
+            yearSelect.innerHTML = Object.keys(yearData).map(year => `<option value="${year}">${year}</option>`).join('');
+            yearSelect.value = currentYear;
+
+            yearSelect.addEventListener('change', updateDisciplines);
+            disciplineSelect.addEventListener('change', updateTable);
+            viewOptionSelect.addEventListener('change', updateTable);
+
+            function updateDisciplines() {
+                const year = yearSelect.value;
+                let disciplines = new Set();
+                for (const player in platzierungData) {
+                    for (const discipline in platzierungData[player]) {
+                        if (platzierungData[player][discipline][year]) {
+                            disciplines.add(discipline);
+                        }
+                    }
+                }
+                if (additionalDisciplines[year]) {
+                    additionalDisciplines[year].forEach(discipline => disciplines.add(discipline));
+                }
+                disciplineSelect.innerHTML = Array.from(disciplines).sort().map(d => `<option value="${d}">${d}</option>`).join('');
+                if (disciplines.has('monster_dyp')) {
+                    disciplineSelect.value = 'monster_dyp';
+                } else if (disciplines.size > 0) {
+                    disciplineSelect.value = Array.from(disciplines)[0];
+                }
+                updateTable();
+            }
+
+            function updateTable() {
+                const year = yearSelect.value;
+                const discipline = disciplineSelect.value;
+                const viewOption = viewOptionSelect.value;
+                rankingTable.innerHTML = '';
+                tableHeader.innerHTML = `<th>Disziplin</th><th>Platz</th><th>Spieler</th><th>Punkte</th>`;
+
+                const sortedPlayers = Object.keys(platzierungData)
+                    .filter(player => teilnahmenData[player][discipline][year] && teilnahmenData[player][discipline][year] > 0)
+                    .sort((a, b) => platzierungData[b][discipline][year] - platzierungData[a][discipline][year]);
+
+                if (viewOption === 'Häufigkeiten') {
+                    const maxPlatz = Math.max(...sortedPlayers.flatMap(player => turnierDetails[player][discipline][year].map(d => d[0])));
+                    tableHeader.innerHTML += `${Array.from({ length: maxPlatz }, (_, i) => `<th>${i + 1}</th>`).join('')}`;
+
+                    sortedPlayers.forEach((player, rank) => {
+                        const platzierung = platzierungData[player][discipline][year].toFixed(2);
+                        const platzierungen = turnierDetails[player][discipline][year].map(d => d[0]);
+                        const haeufigkeiten = Array.from({ length: maxPlatz }, (_, i) => platzierungen.filter(p => p === i + 1).length);
+                        const row = document.createElement('tr');
+                        row.innerHTML = `<td>${discipline}</td><td>${rank + 1}</td><td>${player}</td><td>${platzierung}</td>${haeufigkeiten.map(h => `<td>${h}</td>`).join('')}`;
+                        rankingTable.appendChild(row);
+                    });
+                } else {
+                    tableHeader.innerHTML += `<th>Details</th>`;
+                    sortedPlayers.forEach((player, rank) => {
+                        const platzierung = platzierungData[player][discipline][year].toFixed(2);
+                        const details = turnierDetails[player][discipline][year].map(d => `Platz: ${d[0]}, Teilnehmer: ${d[1]}`).join('; ');
+                        const row = document.createElement('tr');
+                        row.innerHTML = `<td>${discipline}</td><td>${rank + 1}</td><td>${player}</td><td>${platzierung}</td><td>${details}</td>`;
+                        rankingTable.appendChild(row);
+                    });
+                }
+            }
+
+            updateDisciplines();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Elo Rangliste</title>
+    <style>
+        body { font-family: Arial, sans-serif; }
+        .container { width: 1200px; margin: 0 auto; }
+        .combobox { margin: 10px 0; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <label for="discipline">Disziplin:</label>
+        <select id="discipline" class="combobox"></select>
+
+        <table id="ranking-table">
+            <thead>
+                <tr>
+                    <th onclick="sortTable(0)">Rang</th>
+                    <th onclick="sortTable(1)">Spieler</th>
+                    <th onclick="sortTable(2)">Elo Punkte</th>
+                    <th onclick="sortTable(3)">Spiele</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <script>
+        async function fetchData() {
+            try {
+                const response = await fetch('eloRangliste.json');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+                return data;
+            } catch (error) {
+                console.error('Fehler beim Laden der Daten:', error);
+                return null;
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            const data = await fetchData();
+            if (!data) {
+                return;
+            }
+            const { elo_ratings, games_played } = data;
+
+            const disciplineSelect = document.getElementById('discipline');
+            const rankingTable = document.getElementById('ranking-table').getElementsByTagName('tbody')[0];
+
+            const disciplines = new Set();
+            for (const player in elo_ratings) {
+                for (const discipline in elo_ratings[player]) {
+                    disciplines.add(discipline);
+                }
+            }
+            disciplineSelect.innerHTML = Array.from(disciplines).sort().map(d => `<option value="${d}">${d}</option>`).join('');
+            disciplineSelect.addEventListener('change', updateTable);
+
+            function updateTable() {
+                const discipline = disciplineSelect.value;
+                rankingTable.innerHTML = '';
+
+                const sortedPlayers = Object.keys(elo_ratings)
+                    .sort((a, b) => elo_ratings[b][discipline] - elo_ratings[a][discipline]);
+
+                sortedPlayers.forEach((player, rank) => {
+                    const elo = elo_ratings[player][discipline].toFixed(2);
+                    const games = games_played[player][discipline];
+                    const row = document.createElement('tr');
+                    row.innerHTML = `<td>${rank + 1}</td><td>${player}</td><td>${elo}</td><td>${games}</td>`;
+                    rankingTable.appendChild(row);
+                });
+            }
+
+            disciplineSelect.value = Array.from(disciplines)[0];
+            updateTable();
+        });
+
+        function sortTable(n) {
+            const table = document.getElementById("ranking-table");
+            let rows, switching, i, x, y, shouldSwitch, dir, switchcount = 0;
+            switching = true;
+            dir = "asc"; 
+            while (switching) {
+                switching = false;
+                rows = table.rows;
+                for (i = 1; i < (rows.length - 1); i++) {
+                    shouldSwitch = false;
+                    x = rows[i].getElementsByTagName("TD")[n];
+                    y = rows[i + 1].getElementsByTagName("TD")[n];
+                    if (dir == "asc") {
+                        if (x.innerHTML.toLowerCase() > y.innerHTML.toLowerCase()) {
+                            shouldSwitch = true;
+                            break;
+                        }
+                    } else if (dir == "desc") {
+                        if (x.innerHTML.toLowerCase() < y.innerHTML.toLowerCase()) {
+                            shouldSwitch = true;
+                            break;
+                        }
+                    }
+                }
+                if (shouldSwitch) {
+                    rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
+                    switching = true;
+                    switchcount ++;      
+                } else {
+                    if (switchcount == 0 && dir == "asc") {
+                        dir = "desc";
+                        switching = true;
+                    }
+                }
+            }
+        }
+    </script>
+</body>
+</html>

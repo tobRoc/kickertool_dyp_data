@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Elo Rangliste Spieler GUI</title>
+    <style>
+        body { font-family: Arial, sans-serif; }
+        .container { width: 1200px; margin: 0 auto; }
+        .combobox { margin: 10px 0; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <label for="player">Spieler:</label>
+        <select id="player" class="combobox"></select>
+
+        <table id="player-table">
+            <thead>
+                <tr>
+                    <th>Datum</th>
+                    <th>Team 1 Spieler 1</th>
+                    <th>Elo Punkte 1</th>
+                    <th>Team 1 Spieler 2</th>
+                    <th>Elo Punkte 2</th>
+                    <th>Team 2 Spieler 1</th>
+                    <th>Elo Punkte 1</th>
+                    <th>Team 2 Spieler 2</th>
+                    <th>Elo Punkte 2</th>
+                    <th>Ergebnis</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <script>
+        async function fetchData() {
+            try {
+                const response = await fetch('eloRanglisteDetailed.json');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+                console.log('Geladene Daten:', data); // Konsolenausgabe hinzugefügt
+                return data;
+            } catch (error) {
+                console.error('Fehler beim Laden der Daten:', error);
+                return null;
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            const data = await fetchData();
+            if (!data) {
+                return;
+            }
+            const { player_data } = data;
+            console.log('Player Data:', player_data); // Konsolenausgabe hinzugefügt
+
+            const playerSelect = document.getElementById('player');
+            const playerTable = document.getElementById('player-table').getElementsByTagName('tbody')[0];
+
+            playerSelect.innerHTML = Object.keys(player_data).sort().map(player => `<option value="${player}">${player}</option>`).join('');
+            playerSelect.addEventListener('change', updateTable);
+
+            function updateTable() {
+                const player = playerSelect.value;
+                playerTable.innerHTML = '';
+
+                player_data[player].forEach(match => {
+                    const [date, player, elo, player2_team1, elo2_team1, player1_team2, elo1_team2, player2_team2, elo2_team2, result1, result2] = match;
+                    const result = `${result1}-${result2}`;
+                    const row = document.createElement('tr');
+                    row.innerHTML = `<td>${date}</td><td>${player}</td><td>${elo}</td><td>${player2_team1}</td><td>${elo2_team1}</td><td>${player1_team2}</td><td>${elo1_team2}</td><td>${player2_team2}</td><td>${elo2_team2}</td><td>${result}</td>`;
+                    playerTable.appendChild(row);
+                });
+            }
+
+            playerSelect.value = Object.keys(player_data)[0];
+            updateTable();
+        });
+    </script>
+</body>
+</html>
