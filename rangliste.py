@@ -36,9 +36,10 @@ def process_end_results(end_results, discipline, year):
     teilnehmerzahl = len(end_results)
     for platzierung, player in enumerate(end_results, start=1):
         name = player['name']
-        platzierung_data[name][discipline][year] += teilnehmerzahl / platzierung
-        teilnahmen_data[name][discipline][year] += 1
-        turnier_details[name][discipline][year].append((platzierung, teilnehmerzahl))
+        if platzierung > 0:
+            platzierung_data[name][discipline][year] += teilnehmerzahl / platzierung
+            teilnahmen_data[name][discipline][year] += 1
+            turnier_details[name][discipline][year].append((platzierung, teilnehmerzahl))
 
 # Funktion zur Verarbeitung von Eliminations
 def process_eliminations(eliminations, discipline, year, total_players):
@@ -49,9 +50,10 @@ def process_eliminations(eliminations, discipline, year, total_players):
                 if 'stats' in standing and 'place' in standing['stats']:
                     place = standing['stats']['place']
                     name = standing['name']
-                    platzierung_data[name][discipline][year] += total_players / place
-                    teilnahmen_data[name][discipline][year] += 1
-                    turnier_details[name][discipline][year].append((place, total_players))
+                    if place > 0:
+                        platzierung_data[name][discipline][year] += total_players / place
+                        teilnahmen_data[name][discipline][year] += 1
+                        turnier_details[name][discipline][year].append((place, total_players))
                 
 # Funktion zur Verarbeitung von Qualifying
 def process_qualifying(qualifying, discipline, year, elimination_count):
@@ -62,10 +64,11 @@ def process_qualifying(qualifying, discipline, year, elimination_count):
         for rank, standing in enumerate(standings, start=1):
             name = standing['name']
             if name not in platzierung_data or year not in platzierung_data[name][discipline]:
-                platzierung_data[name][discipline][year] += total_players / rankEli
-                teilnahmen_data[name][discipline][year] += 1
-                turnier_details[name][discipline][year].append((rankEli, total_players))
-                rankEli += 1
+                if rankEli > 0:
+                    platzierung_data[name][discipline][year] += total_players / rankEli
+                    teilnahmen_data[name][discipline][year] += 1
+                    turnier_details[name][discipline][year].append((rankEli, total_players))
+                    rankEli += 1
 
 # Durchlaufen der Turnierdateien und Aktualisieren der Platzierungsdaten
 for file_name in tournament_files:
@@ -90,11 +93,17 @@ for file_name in tournament_files:
     if 'qualifying' in tournament_data:
         process_qualifying(tournament_data['qualifying'][0], discipline, year, elimination_count)
 
-# Zusätzliche Disziplinen für die Jahre hinzufügen
-additional_disciplines = {
-    2023: ['double_elimination', 'round_robin', 'monster_dyp'],
-    2024: ['whist', 'round_robin', 'monster_dyp']
-}
+# Dynamische Ermittlung der Disziplinen aus den Turnierdateien
+additional_disciplines = defaultdict(set)
+
+for file_name in tournament_files:
+    file_path = os.path.join(tournaments_dir, file_name)
+    with open(file_path, 'r', encoding='utf-8') as file:
+        tournament_data = json.load(file)
+    
+    discipline = tournament_data.get('mode', 'unknown')
+    year = parser.parse(tournament_data['createdAt']).year
+    additional_disciplines[year].add(discipline)
 
 for year, disciplines in additional_disciplines.items():
     for discipline in disciplines:
@@ -102,6 +111,41 @@ for year, disciplines in additional_disciplines.items():
             platzierung_data[discipline] = defaultdict(lambda: defaultdict(float))
             teilnahmen_data[discipline] = defaultdict(lambda: defaultdict(int))
             turnier_details[discipline] = defaultdict(lambda: defaultdict(list))
+
+def clean_data():
+    # Spieler mit 0-Werten aus platzierung_data entfernen
+    for player in list(platzierung_data.keys()):
+        for discipline in list(platzierung_data[player].keys()):
+            for year in list(platzierung_data[player][discipline].keys()):
+                if platzierung_data[player][discipline][year] == 0:
+                    del platzierung_data[player][discipline][year]
+            if not platzierung_data[player][discipline]:  # Disziplin entfernen, wenn leer
+                del platzierung_data[player][discipline]
+        if not platzierung_data[player]:  # Spieler entfernen, wenn leer
+            del platzierung_data[player]
+
+    # Spieler mit 0-Werten aus teilnahmen_data entfernen
+    for player in list(teilnahmen_data.keys()):
+        for discipline in list(teilnahmen_data[player].keys()):
+            for year in list(teilnahmen_data[player][discipline].keys()):
+                if teilnahmen_data[player][discipline][year] == 0:
+                    del teilnahmen_data[player][discipline][year]
+            if not teilnahmen_data[player][discipline]:  # Disziplin entfernen, wenn leer
+                del teilnahmen_data[player][discipline]
+        if not teilnahmen_data[player]:  # Spieler entfernen, wenn leer
+            del teilnahmen_data[player]
+
+    # Spieler mit leeren Listen aus turnier_details entfernen
+    for player in list(turnier_details.keys()):
+        for discipline in list(turnier_details[player].keys()):
+            for year in list(turnier_details[player][discipline].keys()):
+                if not turnier_details[player][discipline][year]:
+                    del turnier_details[player][discipline][year]
+            if not turnier_details[player][discipline]:  # Disziplin entfernen, wenn leer
+                del turnier_details[player][discipline]
+        if not turnier_details[player]:  # Spieler entfernen, wenn leer
+            del turnier_details[player]
+
 
 # GUI erstellen
 class RanglisteApp(tk.Tk):
@@ -193,14 +237,17 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"Error: {e}")
 
-# JSON-Datei mit den Daten erstellen
+# Daten bereinigen
+clean_data()
+
+# JSON-Datei mit den bereinigten Daten erstellen
 data = {
     "platzierungData": platzierung_data,
     "teilnahmenData": teilnahmen_data,
     "turnierDetails": turnier_details,
-    "additionalDisciplines": additional_disciplines,
+    "additionalDisciplines": {year: list(disciplines) for year, disciplines in additional_disciplines.items()},
     "yearData": year_data
 }
 
 with open('rangliste.json', 'w') as json_file:
-    json.dump(data, json_file)
+    json.dump(data, json_file, ensure_ascii=False, indent=4)

@@ -7,13 +7,9 @@ def download_json(url):
     response.raise_for_status() # Raise an exception for HTTP errors
     return response.json()
 
-#https://live.kickertool.de/api/table_soccer/pages/dyp_nuernberg.json
-
 # Pfad zur JSON-Datei
 url = 'https://live.kickertool.de/api/table_soccer/pages/dyp_nuernberg.json'
 data = download_json(url)
-
-json_file_path = 'https://live.kickertool.de/api/table_soccer/pages/dyp_nuernberg.json'
 
 # Verzeichnis zum Speichern der heruntergeladenen Dateien
 download_dir = './tournaments/'
