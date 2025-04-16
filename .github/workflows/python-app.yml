@@ -36,8 +36,10 @@ jobs:
         python rangliste.py
         python eloRangliste.py
         ls -lax
-        cp rangliste.json ~/files_to_upload
-        cp eloRanglisteDetailed.json ~/files_to_upload
+        mkdir _site
+        cp index.html _site/
+        cp rangliste.json _site/
+        cp eloRanglisteDetailed.json _site/
     - name: Update JSON artifacts
       uses: actions/upload-artifact@v4
       with: 
@@ -45,6 +47,10 @@ jobs:
         path: |
           rangliste.json
           eloRanglisteDetailed.json
+    - name: Upload artifact
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: _site
     - name: Upload JSON files via FTP
       uses: milanmk/actions-file-deployer@master
       with:
@@ -63,3 +69,15 @@ jobs:
     - name: Check folder    
       run: |
         ls -lax
+  
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+        
