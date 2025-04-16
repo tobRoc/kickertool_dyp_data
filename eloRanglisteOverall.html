@@ -34,7 +34,7 @@
     <script>
         async function fetchData() {
             try {
-                const response = await fetch('https://tobroc.github.io/kickertool_dyp_data/eloRangliste.json');
+                const response = await fetch('eloRangliste.json');
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
