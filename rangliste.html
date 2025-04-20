@@ -6,11 +6,31 @@
     <title>Rangliste</title>
     <style>
         body { font-family: Arial, sans-serif; }
-        .container { width: 1200px; margin: 0 auto; }
+        .container { width: 1050px; margin: 0 auto; }
         .combobox, .option-menu { margin: 10px 0; }
         table { width: 100%; border-collapse: collapse; margin-top: 20px; }
         th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
         th { background-color: #f2f2f2; }
+        
+        /* Fixieren des Tabellen-Headers */
+        #ranking-table {
+            border-collapse: collapse;
+            width: 100%;
+            overflow-y: scroll;
+            display: block;
+            max-height: 712px; /* Passe die maximale Höhe nach Bedarf an */
+            max-width: 1050px;
+        }
+
+        #ranking-table thead {
+            position: sticky;
+            top: 0;
+            z-index: 1;
+        }
+
+        th, td {
+            min-width: 120px;
+        }
     </style>
 </head>
 <body>
