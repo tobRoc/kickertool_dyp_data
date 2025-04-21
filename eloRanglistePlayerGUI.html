@@ -91,7 +91,7 @@
                 const player = playerSelect.value;
                 playerTable.innerHTML = '';
 
-                player_data[player].forEach(match => {
+                player_data[player].slice().reverse().forEach(match => {
                     const [date, player, elo, player2_team1, elo2_team1, player1_team2, elo1_team2, player2_team2, elo2_team2, result1, result2] = match;
                     const result = `${result1}-${result2}`;
                     const row = document.createElement('tr');
