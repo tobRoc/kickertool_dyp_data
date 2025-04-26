@@ -60,24 +60,24 @@ jobs:
       uses: actions/upload-pages-artifact@v3
       with:
         path: _site
-    - name: Upload JSON files via FTP
-      uses: milanmk/actions-file-deployer@master
-      with:
-        remote-protocol: ftp
-
-        #Credentials for (S)FTP access to server using GitHub secrets
-        remote-host: alfa3211.alfahosting-server.de
-        remote-user: web23345784
-        remote-password: ${{ secrets.FTP_PASSWORD }}
-        
-        # Path for specific folder on server for files deployment
-        remote-path: /files/wordpress/rangliste/json
-        
-        # Port for FTP 21 (SFTP 221) access to server
-        remote-port: 21
-    - name: Check folder    
-      run: |
-        ls -lax
+#    - name: Upload JSON files via FTP
+#      uses: milanmk/actions-file-deployer@master
+#      with:
+#        remote-protocol: ftp
+#
+#        #Credentials for (S)FTP access to server using GitHub secrets
+#        remote-host: alfa3211.alfahosting-server.de
+#        remote-user: web23345784
+#        remote-password: ${{ secrets.FTP_PASSWORD }}
+#        
+#        # Path for specific folder on server for files deployment
+#        remote-path: /files/wordpress/rangliste/json
+#        
+#        # Port for FTP 21 (SFTP 221) access to server
+#        remote-port: 21
+#    - name: Check folder    
+#      run: |
+#        ls -lax
   
   deploy:
     needs: build
