@@ -1,149 +1,573 @@
+
 <!DOCTYPE html>
 <html lang="de">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Elo Rangliste</title>
-    <style>
-        body { font-family: Arial, sans-serif; }
-        .container { width: 600px; margin: 0 auto; }
-        .combobox { margin: 10px 0; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-        th { background-color: #f2f2f2; cursor: pointer; }
-        
-        /* Fixieren des Tabellen-Headers */
-        #ranking-table {
-            border-collapse: collapse;
-            width: 100%;
-            overflow-y: scroll;
-            display: block;
-            max-height: 712px; /* Passe die maximale Höhe nach Bedarf an */
-            max-width: 600px;
-        }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Elo Rangliste (Overall)</title>
 
-        #ranking-table thead {
-            position: sticky;
-            top: 0;
-            z-index: 1;
-        }
+  <style>
+    :root{
+      --bg: #f6f7fb;
+      --panel: #ffffff;
+      --text: #111827;
+      --muted: #6b7280;
+      --border: #e5e7eb;
+      --primary: #2563eb;
+      --pos: #059669;
+      --neg: #dc2626;
+      --radius: 14px;
+      --shadow: 0 8px 30px rgba(17, 24, 39, 0.08);
+    }
 
-        th, td {
-            min-width: 120px;
-        }            
-    </style>
+    * { box-sizing: border-box; }
+    body{
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      color: var(--text);
+      background: var(--bg);
+    }
+
+    .page{
+      width: 100%;
+      padding: 14px 16px;
+    }
+
+    .toolbar{
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      background: rgba(246,247,251,0.92);
+      backdrop-filter: blur(8px);
+      padding: 10px 0 14px;
+    }
+
+    .toolbar-inner{
+      display: flex;
+      gap: 12px;
+      align-items: flex-end;
+      flex-wrap: wrap;
+    }
+
+    .title{
+      font-size: 18px;
+      font-weight: 900;
+      margin-right: 10px;
+    }
+
+    .field{
+      display: grid;
+      gap: 6px;
+      min-width: 200px;
+    }
+
+    label{
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    select, input{
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--panel);
+      font-size: 14px;
+      outline: none;
+      min-width: 220px;
+    }
+
+    input[type="search"]{ min-width: 240px; }
+
+    .hint{
+      margin-left: auto;
+      font-size: 12px;
+      color: var(--muted);
+      padding-bottom: 6px;
+      white-space: nowrap;
+    }
+
+    .panel{
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    .table-wrap{
+      overflow: auto;
+      height: calc(100vh - 170px);
+      border-radius: var(--radius);
+    }
+
+    @media (max-width: 1100px){
+      .table-wrap{ height: 65vh; }
+      input, select{ width: 100%; min-width: 220px; }
+      .hint{ margin-left: 0; }
+    }
+
+    table{
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      font-size: 13.5px;
+    }
+
+    thead th{
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      background: #fbfbfd;
+      border-bottom: 1px solid var(--border);
+      padding: 12px 10px;
+      text-align: left;
+      white-space: nowrap;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    tbody td{
+      border-bottom: 1px solid #f1f5f9;
+      padding: 10px 10px;
+      white-space: nowrap;
+    }
+
+    tbody tr:nth-child(odd){ background: #fcfcff; }
+    tbody tr:hover{ background: #eef2ff; cursor: pointer; }
+
+    .num{ text-align: right; font-variant-numeric: tabular-nums; }
+
+    .kpis{
+      display: grid;
+      grid-template-columns: repeat(4, minmax(180px, 1fr));
+      gap: 10px;
+      margin: 12px 0;
+    }
+
+    @media (max-width: 1100px){
+      .kpis{ grid-template-columns: 1fr 1fr; }
+    }
+
+    .kpi{
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: #fff;
+    }
+    .kpi .label{ font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+    .kpi .value{ font-size: 18px; font-weight: 900; font-variant-numeric: tabular-nums; }
+    .kpi .sub{ font-size: 12px; color: var(--muted); margin-top: 3px; }
+
+    .error{
+      padding: 12px 14px;
+      border: 1px solid #fecaca;
+      background: #fff1f2;
+      color: #9f1239;
+      border-radius: 12px;
+      margin-top: 12px;
+      font-size: 13px;
+      white-space: pre-wrap;
+      display:none;
+    }
+
+    .loading{
+      padding: 12px 14px;
+      border: 1px dashed var(--border);
+      background: #fff;
+      color: var(--muted);
+      border-radius: 12px;
+      margin-top: 12px;
+      font-size: 13px;
+      display:none;
+    }
+
+    /* Discipline pills (ideal for ~4 disciplines) */
+    .pills{
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-top: 2px;
+    }
+    .pill{
+      border: 1px solid var(--border);
+      background: #fff;
+      color: var(--text);
+      padding: 8px 10px;
+      border-radius: 999px;
+      cursor: pointer;
+      font-size: 13px;
+      user-select:none;
+    }
+    .pill.active{
+      border-color: rgba(37,99,235,0.35);
+      background: rgba(37,99,235,0.10);
+      color: #1d4ed8;
+      font-weight: 800;
+    }
+
+    /* Show select on small screens (optional) */
+    .discipline-select-only{
+      display:none;
+    }
+    @media (max-width: 700px){
+      .pills{ display:none; }
+      .discipline-select-only{ display:block; }
+    }
+
+    .small{
+      font-size: 12px;
+      color: var(--muted);
+    }
+  </style>
 </head>
-<body>
-    <div class="container">
-        <label for="discipline">Disziplin:</label>
-        <select id="discipline" class="combobox"></select>
 
-        <table id="ranking-table">
-            <thead>
-                <tr>
-                    <th onclick="sortTable(0)">Platz</th>
-                    <th onclick="sortTable(1)">Spieler</th>
-                    <th onclick="sortTable(2)">Elo Punkte</th>
-                    <th onclick="sortTable(3)">Spiele</th>
-                </tr>
-            </thead>
-            <tbody></tbody>
-        </table>
+<body>
+  <div class="page">
+    <div class="toolbar">
+      <div class="toolbar-inner">
+        <div class="title">ELO Rangliste</div>
+
+        <div class="field" style="min-width: 320px;">
+          <label>Disziplin</label>
+          <div class="pills" id="disciplinePills"></div>
+          <select id="discipline" class="discipline-select-only"></select>
+        </div>
+
+        <div class="field">
+          <label for="search">Spieler suchen</label>
+          <input id="search" type="search" placeholder="Name enthält …" autocomplete="off" />
+        </div>
+
+        <div class="field" style="min-width: 160px;">
+          <label for="minGames">Min. Spiele</label>
+          <input id="minGames" type="number" min="0" step="1" value="0" />
+        </div>
+
+        <div class="field" style="min-width: 160px;">
+          <label for="rows">Zeilen</label>
+          <select id="rows">
+            <option value="50">50</option>
+            <option value="100" selected>100</option>
+            <option value="200">200</option>
+            <option value="999999">Alle</option>
+          </select>
+        </div>
+
+        <div class="hint">Klick auf Spieler → (optional) Historie öffnen</div>
+      </div>
+
+      <div class="kpis" id="kpis"></div>
+      <div class="loading" id="loadingBox">Lade Daten …</div>
+      <div class="error" id="errorBox"></div>
     </div>
 
-    <script>
-        async function fetchData() {
-            try {
-                const response = await fetch('eloRangliste.json');
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                const data = await response.json();
-                return data;
-            } catch (error) {
-                console.error('Fehler beim Laden der Daten:', error);
-                return null;
-            }
-        }
+    <div class="panel">
+      <div class="table-wrap">
+        <table id="ranking-table">
+          <thead>
+            <tr>
+              <th data-key="rank" title="Sortieren">Platz</th>
+              <th data-key="player" title="Sortieren">Spieler</th>
+              <th data-key="elo" class="num" title="Sortieren">Elo Punkte</th>
+              <th data-key="games" class="num" title="Sortieren">Spiele</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
 
-        document.addEventListener('DOMContentLoaded', async () => {
-            const data = await fetchData();
-            if (!data) {
-                return;
-            }
-            const { elo_ratings, games_played } = data;
+    <div class="small" style="margin-top:10px;">
+      Quelle: <code>eloRangliste.json</code> (elo_ratings + games_played) [1](https://github.com/tobRoc/kickertool_dyp_data/blob/main/eloRanglisteOverall.html)
+    </div>
+  </div>
 
-            const disciplineSelect = document.getElementById('discipline');
-            const rankingTable = document.getElementById('ranking-table').getElementsByTagName('tbody')[0];
+  <script>
+    "use strict";
 
-            const disciplines = new Set();
-            for (const player in elo_ratings) {
-                for (const discipline in elo_ratings[player]) {
-                    disciplines.add(discipline);
-                }
-            }
-            disciplineSelect.innerHTML = Array.from(disciplines).sort().map(d => `<option value="${d}">${d}</option>`).join('');
-            disciplineSelect.addEventListener('change', updateTable);
+    // ===== State =====
+    let rawData = null;
+    let disciplines = [];
+    let currentDiscipline = "";
+    let sortKey = "elo";
+    let sortDir = "desc"; // default: highest Elo first
+    let rowsCache = [];   // current rendered rows (after filter + sort)
 
-            function updateTable() {
-                const discipline = disciplineSelect.value;
-                rankingTable.innerHTML = '';
+    // ===== DOM helpers =====
+    const $ = (id) => document.getElementById(id);
+    const tbody = () => document.querySelector("#ranking-table tbody");
 
-                const sortedPlayers = Object.keys(elo_ratings)
-                    .sort((a, b) => elo_ratings[b][discipline] - elo_ratings[a][discipline]);
+    function showLoading(show){
+      $("loadingBox").style.display = show ? "block" : "none";
+    }
+    function showError(msg){
+      const box = $("errorBox");
+      box.style.display = "block";
+      box.textContent = msg;
+    }
+    function clearError(){
+      const box = $("errorBox");
+      box.style.display = "none";
+      box.textContent = "";
+    }
 
-                sortedPlayers.forEach((player, rank) => {
-                    if (elo_ratings === undefined || 
-                        elo_ratings[player] === undefined ||
-                        elo_ratings[player][discipline] === undefined) return; // Skip players without rating in the selected discipline
-                    const elo = elo_ratings[player][discipline].toFixed(2);
-                    const games = games_played[player][discipline];
-                    const row = document.createElement('tr');
-                    row.innerHTML = `<td>${rank + 1}</td><td>${player}</td><td>${elo}</td><td>${games}</td>`;
-                    rankingTable.appendChild(row);
-                });
-            }
+    function fmtElo(n){
+      return Number.isFinite(n) ? n.toFixed(2) : "–";
+    }
 
-            disciplineSelect.value = Array.from(disciplines)[0];
-            updateTable();
+    // ===== Data load =====
+    async function fetchData(){
+      // in deiner bestehenden Version wird eloRangliste.json geladen [1](https://github.com/tobRoc/kickertool_dyp_data/blob/main/eloRanglisteOverall.html)
+      const candidates = [
+        "eloRangliste.json",
+        "https://tobroc.github.io/kickertool_dyp_data/eloRangliste.json"
+      ];
+      for (const url of candidates){
+        try{
+          const r = await fetch(url, { cache: "no-store" });
+          if (!r.ok) continue;
+          return await r.json();
+        }catch(e){}
+      }
+      return null;
+    }
+
+    function collectDisciplines(elo_ratings){
+      const set = new Set();
+      for (const player in elo_ratings){
+        const obj = elo_ratings[player];
+        if (!obj) continue;
+        for (const d in obj) set.add(d);
+      }
+      return Array.from(set).sort((a,b) => a.localeCompare(b, "de"));
+    }
+
+    function preferredDiscipline(list){
+      // du sagst: meistens monster_dyp
+      if (list.includes("monster_dyp")) return "monster_dyp";
+      return list[0] || "";
+    }
+
+    // ===== UI: discipline pills + select =====
+    function renderDisciplineControls(){
+      const pills = $("disciplinePills");
+      pills.innerHTML = "";
+
+      // pills
+      disciplines.forEach(d => {
+        const b = document.createElement("button");
+        b.className = "pill" + (d === currentDiscipline ? " active" : "");
+        b.type = "button";
+        b.textContent = d;
+        b.addEventListener("click", () => {
+          currentDiscipline = d;
+          // keep select in sync
+          $("discipline").value = d;
+          renderDisciplineControls();
+          updateTable();
         });
+        pills.appendChild(b);
+      });
 
-        function sortTable(n) {
-            const table = document.getElementById("ranking-table");
-            let rows, switching, i, x, y, shouldSwitch, dir, switchcount = 0;
-            switching = true;
-            dir = "asc"; 
-            while (switching) {
-                switching = false;
-                rows = table.rows;
-                for (i = 1; i < (rows.length - 1); i++) {
-                    shouldSwitch = false;
-                    x = rows[i].getElementsByTagName("TD")[n];
-                    y = rows[i + 1].getElementsByTagName("TD")[n];
-                    if (dir == "asc") {
-                        if (x.innerHTML.toLowerCase() > y.innerHTML.toLowerCase()) {
-                            shouldSwitch = true;
-                            break;
-                        }
-                    } else if (dir == "desc") {
-                        if (x.innerHTML.toLowerCase() < y.innerHTML.toLowerCase()) {
-                            shouldSwitch = true;
-                            break;
-                        }
-                    }
-                }
-                if (shouldSwitch) {
-                    rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
-                    switching = true;
-                    switchcount ++;      
-                } else {
-                    if (switchcount == 0 && dir == "asc") {
-                        dir = "desc";
-                        switching = true;
-                    }
-                }
-            }
+      // select (mobile)
+      const sel = $("discipline");
+      sel.innerHTML = disciplines.map(d => `<option value="${d}">${d}</option>`).join("");
+      sel.value = currentDiscipline;
+      sel.onchange = () => {
+        currentDiscipline = sel.value;
+        renderDisciplineControls();
+        updateTable();
+      };
+    }
+
+    // ===== Build rows for current discipline =====
+    function buildRowsForDiscipline(discipline){
+      const { elo_ratings, games_played } = rawData;
+
+      const rows = [];
+      for (const player of Object.keys(elo_ratings)){
+        const rObj = elo_ratings[player];
+        const gObj = games_played[player];
+        if (!rObj || !rObj[discipline]) continue; // skip without rating [1](https://github.com/tobRoc/kickertool_dyp_data/blob/main/eloRanglisteOverall.html)
+        const elo = Number(rObj[discipline]);
+        const games = gObj && gObj[discipline] != null ? Number(gObj[discipline]) : 0;
+        rows.push({ player, elo, games });
+      }
+      return rows;
+    }
+
+    // ===== Filter + sort =====
+    function applyFilterSort(rows){
+      const q = ($("search").value || "").trim().toLowerCase();
+      const minGames = Number($("minGames").value || 0);
+      const limit = Number($("rows").value || 100);
+
+      let filtered = rows;
+
+      if (q){
+        filtered = filtered.filter(r => r.player.toLowerCase().includes(q));
+      }
+      if (Number.isFinite(minGames) && minGames > 0){
+        filtered = filtered.filter(r => r.games >= minGames);
+      }
+
+      // sort
+      const dir = (sortDir === "asc") ? 1 : -1;
+      filtered.sort((a,b) => {
+        if (sortKey === "player"){
+          return dir * a.player.localeCompare(b.player, "de");
         }
-    </script>
+        if (sortKey === "elo"){
+          return dir * ((a.elo || 0) - (b.elo || 0));
+        }
+        if (sortKey === "games"){
+          return dir * ((a.games || 0) - (b.games || 0));
+        }
+        return 0;
+      });
+
+      // rank based on sorted order
+      const withRank = filtered.map((r, idx) => ({ ...r, rank: idx + 1 }));
+
+      return withRank.slice(0, limit);
+    }
+
+    // ===== KPIs =====
+    function renderKPIs(allRows){
+      const el = $("kpis");
+      const count = allRows.length;
+      const avgElo = count ? (allRows.reduce((s,r) => s + (r.elo || 0), 0) / count) : 0;
+      const maxElo = count ? Math.max(...allRows.map(r => r.elo || 0)) : 0;
+      const minElo = count ? Math.min(...allRows.map(r => r.elo || 0)) : 0;
+
+      const top = allRows[0];
+
+      el.innerHTML = `
+        <div class="kpi">
+          <div class="label">Disziplin</div>
+          <div class="value">${currentDiscipline || "–"}</div>
+          <div class="sub">Auswahl</div>
+        </div>
+        <div class="kpi">
+          <div class="label">Spieler</div>
+          <div class="value">${count}</div>
+          <div class="sub">mit Rating</div>
+        </div>
+        <div class="kpi">
+          <div class="label">Ø Elo</div>
+          <div class="value">${avgElo ? avgElo.toFixed(1) : "–"}</div>
+          <div class="sub">Min ${minElo ? minElo.toFixed(1) : "–"} / Max ${maxElo ? maxElo.toFixed(1) : "–"}</div>
+        </div>
+        <div class="kpi">
+          <div class="label">#1</div>
+          <div class="value">${top ? top.player : "–"}</div>
+          <div class="sub">${top ? (fmtElo(top.elo) + " (" + top.games + " Spiele)") : ""}</div>
+        </div>
+      `;
+    }
+
+    // ===== Render table =====
+    function updateTable(){
+      if (!rawData) return;
+
+      const baseRows = buildRowsForDiscipline(currentDiscipline);
+      // keep a non-limited version for KPIs (count/avg)
+      // apply filter without limit for KPI stats consistency
+      const q = ($("search").value || "").trim().toLowerCase();
+      const minGames = Number($("minGames").value || 0);
+      let filteredAll = baseRows;
+      if (q) filteredAll = filteredAll.filter(r => r.player.toLowerCase().includes(q));
+      if (Number.isFinite(minGames) && minGames > 0) filteredAll = filteredAll.filter(r => r.games >= minGames);
+
+      // sort for KPIs and to show #1
+      const dir = (sortDir === "asc") ? 1 : -1;
+      filteredAll.sort((a,b) => {
+        if (sortKey === "player") return dir * a.player.localeCompare(b.player, "de");
+        if (sortKey === "elo") return dir * ((a.elo || 0) - (b.elo || 0));
+        if (sortKey === "games") return dir * ((a.games || 0) - (b.games || 0));
+        return 0;
+      });
+
+      renderKPIs(filteredAll);
+
+      // now apply limit for table
+      rowsCache = applyFilterSort(baseRows);
+
+      const tb = tbody();
+      tb.innerHTML = "";
+
+      rowsCache.forEach(r => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td class="num">${r.rank}</td>
+          <td>${r.player}</td>
+          <td class="num">${fmtElo(r.elo)}</td>
+          <td class="num">${Number.isFinite(r.games) ? r.games : "–"}</td>
+        `;
+
+        // Optional: click -> open player history page (falls du möchtest)
+        // tr.addEventListener("click", () => {
+        //   const url = "eloRanglistePlayerGUI.html?player=" + encodeURIComponent(r.player);
+        //   window.open(url, "_blank");
+        // });
+
+        tb.appendChild(tr);
+      });
+
+      // Optional: iframe-height to parent
+      try{
+        const h = document.documentElement.scrollHeight;
+        window.parent.postMessage({ type: "eloHeight", height: h }, "*");
+      }catch(e){}
+    }
+
+    // ===== Sorting header clicks =====
+    function installSorting(){
+      document.querySelectorAll("#ranking-table thead th").forEach(th => {
+        const key = th.getAttribute("data-key");
+        if (!key) return;
+        th.addEventListener("click", () => {
+          if (sortKey === key){
+            sortDir = (sortDir === "desc") ? "asc" : "desc";
+          }else{
+            sortKey = key;
+            // sensible default: elo desc, games desc, player asc
+            sortDir = (key === "player") ? "asc" : "desc";
+          }
+          updateTable();
+        });
+      });
+    }
+
+    // ===== Init =====
+    document.addEventListener("DOMContentLoaded", async () => {
+      showLoading(true);
+      rawData = await fetchData();
+      showLoading(false);
+
+      if (!rawData){
+        showError("Fehler: eloRangliste.json konnte nicht geladen werden.");
+        return;
+      }
+
+      if (!rawData.elo_ratings || !rawData.games_played){
+        showError("Fehler: JSON-Format unerwartet. Erwartet: elo_ratings + games_played.");
+        return;
+      }
+
+      disciplines = collectDisciplines(rawData.elo_ratings);
+      currentDiscipline = preferredDiscipline(disciplines);
+
+      renderDisciplineControls();
+      installSorting();
+
+      // filter listeners
+      $("search").addEventListener("input", () => updateTable());
+      $("minGames").addEventListener("input", () => updateTable());
+      $("rows").addEventListener("change", () => updateTable());
+
+      updateTable();
+    });
+  </script>
 </body>
 </html>
