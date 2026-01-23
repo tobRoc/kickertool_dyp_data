@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="de">
 <head>
@@ -27,7 +28,7 @@
       background: var(--bg);
     }
 
-    /* Full width (statt fixed 1200px wie in der alten Version) */
+    /* Full width */
     .page{
       width: 100%;
       padding: 14px 16px;
@@ -197,7 +198,7 @@
 
     .num{ text-align: right; font-variant-numeric: tabular-nums; }
 
-    /* Disziplin-Pills: bei 4 Disziplinen schneller als Dropdown */
+    /* Disziplin-Pills */
     .pills{
       display: flex;
       gap: 8px;
@@ -229,7 +230,7 @@
       .discipline-select-only{ display:block; }
     }
 
-    /* Spieler-Link (Variante B): echter <a>-Link => Rechtsklick/Long-Press funktioniert */
+    /* Spieler-Link: echter <a> => Rechtsklick/Long‑Press funktioniert */
     .player-link{
       color: var(--primary);
       text-decoration: none;
@@ -315,7 +316,7 @@
     </div>
 
     <div class="small">
-      Datenquelle: <code>eloRangliste.json</code> (enthält <code>elo_ratings</code> &amp; <code>games_played</code>) 
+      Datenquelle: <code>eloRangliste.json</code> (enthält <code>elo_ratings</code> &amp; <code>games_played</code>)
     </div>
   </div>
 
@@ -328,7 +329,10 @@
     let currentDiscipline = "";
     let sortKey = "elo";
     let sortDir = "desc"; // default: Elo absteigend
-    let lastRendered = []; // rows used for table
+
+    // Base URL für Player-GUI (absolut, wie von dir gewünscht)
+    const PLAYER_GUI_BASE =
+      "https://tobroc.github.io/kickertool_dyp_data/eloRanglistePlayerGUI.html";
 
     // ===== DOM helpers =====
     const $ = (id) => document.getElementById(id);
@@ -350,9 +354,8 @@
       return Number.isFinite(n) ? n.toFixed(2) : "–";
     }
 
-    // ===== Data load (wie bisher: eloRangliste.json) =====
+    // ===== Data load =====
     async function fetchData(){
-      // In der bisherigen Version wird eloRangliste.json geladen 
       const candidates = [
         "eloRangliste.json",
         "https://tobroc.github.io/kickertool_dyp_data/eloRangliste.json"
@@ -378,7 +381,7 @@
     }
 
     function preferredDiscipline(list){
-      // User: meist monster_dyp (exakt)
+      // bevorzugt: monster_dyp (exakt)
       if (list.includes("monster_dyp")) return "monster_dyp";
       return list[0] || "";
     }
@@ -421,7 +424,6 @@
         const rObj = elo_ratings[player];
         const gObj = games_played[player];
 
-        // Skip players without rating in selected discipline (wie in der alten Datei) 
         if (!rObj || rObj[discipline] === undefined) continue;
 
         const elo = Number(rObj[discipline]);
@@ -460,7 +462,6 @@
         return 0;
       });
 
-      // rank based on sorted order (Platz = Position)
       return sorted.map((r, idx) => ({ ...r, rank: idx + 1 }));
     }
 
@@ -499,7 +500,7 @@
       `;
     }
 
-    // ===== Render Table =====
+    // ===== Render Table (DOM-sicherer Link-Aufbau) =====
     function updateTable(){
       if (!rawData) return;
 
@@ -510,23 +511,37 @@
       renderKPIs(sortedWithRank);
 
       const limit = Number($("rows").value || 100);
-      lastRendered = sortedWithRank.slice(0, limit);
+      const visible = sortedWithRank.slice(0, limit);
 
       const tb = tbody();
       tb.innerHTML = "";
 
-      for (const r of lastRendered){
+      for (const r of visible){
         const tr = document.createElement("tr");
 
-        // Link im selben Tab => Rechtsklick/Long‑Press möglich (echtes <a>)
-        const playerUrl = "eloRanglistePlayerGUI.html?player=" + encodeURIComponent(r.player);
+        const tdRank = document.createElement("td");
+        tdRank.className = "num";
+        tdRank.textContent = String(r.rank);
 
-        tr.innerHTML = `
-          <td class="num">${r.rank}</td>
-          <td>${playerUrl}${r.player}</a></td>
-          <td class="num">${fmtElo(r.elo)}</td>
-          <td class="num">${Number.isFinite(r.games) ? r.games : "–"}</td>
-        `;
+        const tdPlayer = document.createElement("td");
+        const a = document.createElement("a");
+        a.className = "player-link";
+        a.href = PLAYER_GUI_BASE + "?player=" + encodeURIComponent(r.player);
+        a.textContent = r.player; // ✅ zeigt nur den Namen (z.B. "Ali Al-Musali")
+        tdPlayer.appendChild(a);
+
+        const tdElo = document.createElement("td");
+        tdElo.className = "num";
+        tdElo.textContent = fmtElo(r.elo);
+
+        const tdGames = document.createElement("td");
+        tdGames.className = "num";
+        tdGames.textContent = Number.isFinite(r.games) ? String(r.games) : "–";
+
+        tr.appendChild(tdRank);
+        tr.appendChild(tdPlayer);
+        tr.appendChild(tdElo);
+        tr.appendChild(tdGames);
 
         tb.appendChild(tr);
       }
@@ -546,7 +561,7 @@
 
         th.addEventListener("click", () => {
           if (key === "rank") {
-            // Rank spiegelt Sortierung; wenn man darauf klickt: zurück zu Elo desc
+            // Platz ist abgeleitet → zurück zu Elo desc
             sortKey = "elo";
             sortDir = "desc";
           } else if (sortKey === key){
@@ -575,7 +590,6 @@
       }
 
       if (!rawData.elo_ratings || !rawData.games_played){
-        // In der bestehenden Datei werden genau diese Felder genutzt 
         showError("Fehler: JSON-Format unerwartet. Erwartet: elo_ratings + games_played.");
         return;
       }
