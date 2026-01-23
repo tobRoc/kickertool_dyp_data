@@ -1,12 +1,10 @@
+
 <!DOCTYPE html>
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>ELO: Historie Spieler</title>
-
-  <!-- ECharts (Chart). Wenn geblockt: Tabelle läuft trotzdem weiter. -->
-  https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js</script>
 
   <style>
     :root{
@@ -32,7 +30,7 @@
       background: var(--bg);
     }
 
-    /* Full width (statt fix 1200px Container wie vorher) */
+    /* Full width Layout */
     .page{
       width: 100%;
       padding: 14px 16px;
@@ -56,7 +54,7 @@
 
     .title{
       font-size: 18px;
-      font-weight: 800;
+      font-weight: 900;
       margin-right: 10px;
     }
 
@@ -80,9 +78,7 @@
       min-width: 240px;
     }
 
-    input[type="search"]{
-      min-width: 220px;
-    }
+    input[type="search"]{ min-width: 220px; }
 
     .hint{
       margin-left: auto;
@@ -111,7 +107,7 @@
       box-shadow: var(--shadow);
     }
 
-    /* Tabelle */
+    /* Table */
     .table-panel{ overflow: hidden; }
 
     .table-wrap{
@@ -154,14 +150,13 @@
     tbody tr:hover{ background: #eef2ff; cursor: pointer; }
 
     .num{ text-align: right; font-variant-numeric: tabular-nums; }
-    .delta.pos{ color: var(--pos); font-weight: 800; }
-    .delta.neg{ color: var(--neg); font-weight: 800; }
-    .muted{ color: var(--muted); }
+    .delta.pos{ color: var(--pos); font-weight: 900; }
+    .delta.neg{ color: var(--neg); font-weight: 900; }
 
     /* Sidebar */
     .side{
       position: sticky;
-      top: 78px; /* unter toolbar */
+      top: 78px;
       padding: 12px;
     }
     @media (max-width: 1100px){
@@ -199,6 +194,16 @@
       text-overflow: ellipsis;
     }
 
+    .notice{
+      padding: 10px 12px;
+      border: 1px dashed var(--border);
+      border-radius: 12px;
+      color: var(--muted);
+      background: #fff;
+      font-size: 13px;
+      margin-top: 10px;
+    }
+
     .error{
       padding: 12px 14px;
       border: 1px solid #fecaca;
@@ -210,14 +215,27 @@
       white-space: pre-wrap;
     }
 
-    .chart-fallback{
-      padding: 10px;
-      border: 1px dashed var(--border);
-      border-radius: 12px;
-      color: var(--muted);
-      font-size: 13px;
-      background: #fff;
+    .topline{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      justify-content:space-between;
     }
+
+    .status{
+      font-size:12px;
+      color: var(--muted);
+    }
+
+    .btn{
+      border: 1px solid var(--border);
+      background: #fff;
+      padding: 8px 10px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    .btn:hover{ background:#f9fafb; }
   </style>
 </head>
 
@@ -278,7 +296,12 @@
 
       <!-- CHART + KPIs -->
       <div class="panel side">
-        <div id="eloChart" style="height: 420px;"></div>
+        <div class="topline">
+          <div class="status" id="chartStatus">Diagramm wird geladen…</div>
+          <button class="btn" id="retryChart" type="button" title="ECharts erneut laden">Neu laden</button>
+        </div>
+
+        <div id="eloChart" style="height: 420px; margin-top: 8px;"></div>
 
         <div class="kpis">
           <div class="kpi">
@@ -303,6 +326,7 @@
           </div>
         </div>
 
+        <div id="chartHint" class="notice" style="display:none;"></div>
         <div id="errorBox" class="error" style="display:none;"></div>
       </div>
     </div>
@@ -311,13 +335,7 @@
   <script>
     "use strict";
 
-    // ====== Global State ======
-    let globalData = null;
-    let eloChart = null;
-    let chronAsc = []; // chronologisch (ältestes -> neuestes)
-    let sortDir = "desc"; // Tabelle: neuestes oben (desc) default
-
-    // ====== Helpers ======
+    // ========= DOM Helpers =========
     function $(id){ return document.getElementById(id); }
 
     function showError(msg){
@@ -325,22 +343,34 @@
       box.style.display = "block";
       box.textContent = msg;
     }
-
     function clearError(){
       const box = $("errorBox");
       box.style.display = "none";
       box.textContent = "";
     }
 
+    function setChartStatus(text){
+      $("chartStatus").textContent = text;
+    }
+
+    function showChartHint(msg){
+      const el = $("chartHint");
+      el.style.display = "block";
+      el.textContent = msg;
+    }
+    function hideChartHint(){
+      const el = $("chartHint");
+      el.style.display = "none";
+      el.textContent = "";
+    }
+
     function fmtElo(n){
       return (Number.isFinite(n) ? n.toFixed(1) : "–");
     }
-
     function fmtDelta(d){
       if (!Number.isFinite(d)) return "–";
       return (d >= 0 ? "+" : "") + d.toFixed(1);
     }
-
     function deltaClass(d){
       if (!Number.isFinite(d)) return "";
       return d >= 0 ? "pos" : "neg";
@@ -353,7 +383,44 @@
       }catch(e){}
     }
 
-    // ====== Data Loading ======
+    // ========= ECharts Loader (robust) =========
+    // Tries local first (recommended), then CDNs.
+    function loadScript(url){
+      return new Promise((resolve, reject) => {
+        const s = document.createElement("script");
+        s.src = url;
+        s.async = true;
+        s.onload = () => resolve(url);
+        s.onerror = () => reject(new Error("Load failed: " + url));
+        document.head.appendChild(s);
+      });
+    }
+
+    async function ensureECharts(){
+      // Already available?
+      if (typeof window.echarts !== "undefined") return { ok: true, source: "already" };
+
+      // Try sources in order:
+      const sources = [
+        "./vendor/echarts.min.js", // local (put file here for max reliability)
+        "https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js",
+        "https://unpkg.com/echarts@5/dist/echarts.min.js"
+      ];
+
+      for (const src of sources){
+        try{
+          const loadedFrom = await loadScript(src);
+          if (typeof window.echarts !== "undefined"){
+            return { ok: true, source: loadedFrom };
+          }
+        }catch(e){
+          // try next
+        }
+      }
+      return { ok: false, source: null };
+    }
+
+    // ========= Data Loading =========
     async function fetchData(){
       const candidates = [
         "eloRanglisteDetailed.json",
@@ -363,26 +430,18 @@
       for (const url of candidates){
         try{
           const res = await fetch(url, { cache: "no-store" });
-          const text = await res.text();
           if (!res.ok) continue;
-
-          try{
-            const json = JSON.parse(text);
-            return json;
-          }catch(e){
-            showError("Antwort ist kein JSON: " + url + "\n\n" + text.slice(0, 300));
-            return null;
-          }
+          return await res.json();
         }catch(e){
-          // try next candidate
+          // try next
         }
       }
       showError("Konnte eloRanglisteDetailed.json nicht laden.");
       return null;
     }
 
-    // ====== Parsing of your Array(11) matches ======
-    // match = [date, t1p1, t1elo1, t1p2, t1elo2, t2p1, t2elo1, t2p2, t2elo2, r1, r2]
+    // ========= Your Match Format: Array(11) =========
+    // [date, t1p1, t1elo1, t1p2, t1elo2, t2p1, t2elo1, t2p2, t2elo2, r1, r2]
     function parseMatch(arr){
       return {
         date: arr[0],
@@ -403,8 +462,7 @@
       return NaN;
     }
 
-    function stableChronological(matchesArr, player){
-      // matchesArr: Array of arrays(11)
+    function buildChronAsc(matchesArr, player){
       const parsed = [];
       for (let i=0; i<matchesArr.length; i++){
         const m = parseMatch(matchesArr[i]);
@@ -418,22 +476,23 @@
         });
       }
 
-      // stable sort by date, then original index
+      // Stable sort by date then original index
       parsed.sort((a,b) => {
         if (a.date === b.date) return a._origIndex - b._origIndex;
         return a.date.localeCompare(b.date);
       });
 
-      // delta for selected player
+      // Delta
       for (let i=0; i<parsed.length; i++){
         parsed[i].delta = (i === 0) ? NaN : (parsed[i].selectedElo - parsed[i-1].selectedElo);
+        parsed[i]._chartIndex = i; // index in chronAsc for chart focus
       }
       return parsed;
     }
 
-    // ====== KPI ======
-    function updateKPIs(chron){
-      const games = chron.length;
+    // ========= KPI =========
+    function updateKPIs(chronAsc){
+      const games = chronAsc.length;
       $("kpi-games").textContent = String(games);
 
       if (!games){
@@ -447,12 +506,12 @@
         return;
       }
 
-      const first = chron[0];
-      const last = chron[games - 1];
+      const first = chronAsc[0];
+      const last = chronAsc[games - 1];
       const change = last.selectedElo - first.selectedElo;
 
       let peak = first;
-      for (const m of chron){
+      for (const m of chronAsc){
         if (m.selectedElo > peak.selectedElo) peak = m;
       }
 
@@ -467,98 +526,109 @@
       $("kpi-peak-date").textContent = "Datum: " + peak.date;
     }
 
-    // ====== Chart ======
-    function renderChart(chron, playerName){
-      const el = $("eloChart");
+    // ========= Chart =========
+    let chart = null;
 
-      // Chart optional: wenn ECharts nicht verfügbar, nicht die gesamte Seite killen
+    function destroyChart(){
+      if (chart){
+        try{ chart.dispose(); }catch(e){}
+        chart = null;
+      }
+    }
+
+    function renderChart(chronAsc, playerName){
+      const container = $("eloChart");
+
       if (typeof window.echarts === "undefined"){
-        el.innerHTML = '<div class="chart-fallback">Diagramm nicht verfügbar (ECharts blockiert/fehlt). Tabelle läuft trotzdem.</div>';
+        destroyChart();
+        setChartStatus("Diagramm nicht verfügbar");
+        showChartHint(
+          "ECharts konnte nicht geladen werden. " +
+          "Empfohlen: Datei lokal ablegen unter ./vendor/echarts.min.js (im Repo), " +
+          "damit Adblock/Tracking-Prevention nicht stört."
+        );
+        container.innerHTML = "";
         return;
       }
 
-      try{
-        if (!eloChart){
-          eloChart = echarts.init(el);
-          window.addEventListener("resize", () => eloChart && eloChart.resize());
-        }
+      hideChartHint();
+      setChartStatus("Diagramm bereit");
 
-        const points = chron.map(m => [m.date, m.selectedElo]);
-
-        const option = {
-          title: {
-            text: "Elo-Verlauf: " + playerName,
-            left: "center",
-            textStyle: { fontWeight: 800, fontSize: 14 }
-          },
-          tooltip: {
-            trigger: "axis",
-            axisPointer: { type: "line" },
-            formatter: function(params){
-              const p = params && params[0];
-              if (!p) return "";
-              const idx = p.dataIndex;
-              const m = chron[idx];
-              const d = fmtDelta(m.delta);
-              return (
-                "<b>" + m.date + "</b><br/>" +
-                "Elo: <b>" + fmtElo(m.selectedElo) + "</b> (" + d + ")<br/>" +
-                "Ergebnis: " + m.result + "<br/>" +
-                "<span style='color:#6b7280'>T1: " + m.t1p1 + " / " + m.t1p2 + " — T2: " + m.t2p1 + " / " + m.t2p2 + "</span>"
-              );
-            }
-          },
-          grid: { left: 45, right: 15, top: 55, bottom: 55 },
-          xAxis: { type: "time" },
-          yAxis: { type: "value", scale: true },
-          dataZoom: [
-            { type: "inside", xAxisIndex: 0 },
-            { type: "slider", xAxisIndex: 0, height: 18, bottom: 20 }
-          ],
-          series: [{
-            name: "Elo",
-            type: "line",
-            data: points,
-            showSymbol: false,
-            smooth: true,
-            lineStyle: { width: 2, color: "#2563eb" },
-            areaStyle: { opacity: 0.08, color: "#2563eb" }
-          }]
-        };
-
-        eloChart.setOption(option, true);
-      }catch(e){
-        console.error("Chart render failed:", e);
-        el.innerHTML = '<div class="chart-fallback">Diagramm-Fehler: ' + String(e.message || e) + ' — Tabelle läuft trotzdem.</div>';
+      if (!chart){
+        chart = echarts.init(container);
+        window.addEventListener("resize", () => chart && chart.resize());
       }
+
+      const points = chronAsc.map(m => [m.date, m.selectedElo]);
+
+      const option = {
+        title: {
+          text: "Elo-Verlauf: " + playerName,
+          left: "center",
+          textStyle: { fontWeight: 800, fontSize: 14 }
+        },
+        tooltip: {
+          trigger: "axis",
+          axisPointer: { type: "line" },
+          formatter: function(params){
+            const p = params && params[0];
+            if (!p) return "";
+            const idx = p.dataIndex;
+            const m = chronAsc[idx];
+            const d = fmtDelta(m.delta);
+            return (
+              "<b>" + m.date + "</b><br/>" +
+              "Elo: <b>" + fmtElo(m.selectedElo) + "</b> (" + d + ")<br/>" +
+              "Ergebnis: " + m.result + "<br/>" +
+              "<span style='color:#6b7280'>T1: " + m.t1p1 + " / " + m.t1p2 +
+              " — T2: " + m.t2p1 + " / " + m.t2p2 + "</span>"
+            );
+          }
+        },
+        grid: { left: 45, right: 15, top: 55, bottom: 55 },
+        xAxis: { type: "time" },
+        yAxis: { type: "value", scale: true },
+        dataZoom: [
+          { type: "inside", xAxisIndex: 0 },
+          { type: "slider", xAxisIndex: 0, height: 18, bottom: 20 }
+        ],
+        series: [{
+          name: "Elo",
+          type: "line",
+          data: points,
+          showSymbol: false,
+          smooth: true,
+          lineStyle: { width: 2, color: "#2563eb" },
+          areaStyle: { opacity: 0.08, color: "#2563eb" }
+        }]
+      };
+
+      chart.setOption(option, true);
     }
 
-    function chartFocusIndex(index){
-      if (!eloChart) return;
+    function focusChartIndex(idx){
+      if (!chart) return;
       try{
-        eloChart.dispatchAction({ type: "showTip", seriesIndex: 0, dataIndex: index });
-        eloChart.dispatchAction({ type: "highlight", seriesIndex: 0, dataIndex: index });
+        chart.dispatchAction({ type: "showTip", seriesIndex: 0, dataIndex: idx });
+        chart.dispatchAction({ type: "highlight", seriesIndex: 0, dataIndex: idx });
       }catch(e){}
     }
 
-    // ====== Table ======
-    function renderTable(chron, selectedPlayer){
+    // ========= Table =========
+    let sortDir = "desc"; // newest first default
+
+    function renderTable(chronAsc){
       const tbody = document.querySelector("#player-table tbody");
       tbody.innerHTML = "";
 
       const limit = Number($("rows").value || 100);
 
-      // Ansicht je nach Sortierung
-      let view = chron.slice();
-      if (sortDir === "desc") view.reverse();
-
+      // view is either chronAsc or reversed (desc)
+      const view = (sortDir === "desc") ? chronAsc.slice().reverse() : chronAsc.slice();
       const sliced = view.slice(0, limit);
 
       for (const m of sliced){
         const tr = document.createElement("tr");
-
-        // chartIndex = Index in chronAsc (chron ist bereits ASC!)
-        const chartIndex = chron.indexOf(m);
 
         tr.innerHTML = `
           <td>${m.date}</td>
@@ -574,12 +644,12 @@
           <td class="num">${m.result}</td>
         `;
 
-        tr.addEventListener("click", () => chartFocusIndex(chartIndex));
+        tr.addEventListener("click", () => focusChartIndex(m._chartIndex));
         tbody.appendChild(tr);
       }
     }
 
-    // ====== Player Filter (optional UX) ======
+    // ========= Player Filter =========
     function applyPlayerFilter(allPlayers, filterText){
       const q = (filterText || "").trim().toLowerCase();
       if (!q) return allPlayers;
@@ -593,68 +663,92 @@
       else sel.value = players[0] || "";
     }
 
-    // ====== Main Update ======
+    // ========= App State =========
+    let data = null;
+    let allPlayers = [];
+    let currentChronAsc = [];
+
     function updateUI(){
       clearError();
 
-      if (!globalData || !globalData.player_data){
+      if (!data || !data.player_data){
         showError("Datenformat unerwartet: 'player_data' nicht gefunden.");
         return;
       }
 
-      const selectedPlayer = $("player").value;
-      const matches = globalData.player_data[selectedPlayer];
+      const player = $("player").value;
+      const matches = data.player_data[player];
 
       if (!Array.isArray(matches)){
-        showError("Spielerdaten sind kein Array für: " + selectedPlayer);
+        showError("Spielerdaten sind kein Array für: " + player);
         return;
       }
 
-      chronAsc = stableChronological(matches, selectedPlayer);
-
-      updateKPIs(chronAsc);
-      renderChart(chronAsc, selectedPlayer);
-      renderTable(chronAsc, selectedPlayer);
+      currentChronAsc = buildChronAsc(matches, player);
+      updateKPIs(currentChronAsc);
+      renderTable(currentChronAsc);
+      renderChart(currentChronAsc, player);
 
       safePostHeight();
     }
 
-    // ====== Init ======
-    document.addEventListener("DOMContentLoaded", async () => {
-      globalData = await fetchData();
-      if (!globalData) return;
+    async function initChart(){
+      setChartStatus("Diagramm wird geladen…");
+      const result = await ensureECharts();
 
-      if (!globalData.player_data){
+      if (result.ok){
+        setChartStatus("Diagramm geladen");
+        hideChartHint();
+      }else{
+        setChartStatus("Diagramm nicht verfügbar");
+      }
+
+      // Re-render chart if we already have data on screen
+      if (currentChronAsc.length && $("player").value){
+        renderChart(currentChronAsc, $("player").value);
+      }
+    }
+
+    // ========= Init =========
+    document.addEventListener("DOMContentLoaded", async () => {
+      // load data
+      data = await fetchData();
+      if (!data) return;
+
+      if (!data.player_data){
         showError("JSON geladen, aber 'player_data' fehlt.");
         return;
       }
 
-      const allPlayers = Object.keys(globalData.player_data).sort((a,b) => a.localeCompare(b, "de"));
-
-      // initial fill
+      allPlayers = Object.keys(data.player_data).sort((a,b) => a.localeCompare(b, "de"));
       fillPlayerSelect(allPlayers, allPlayers[0]);
 
-      // Events
+      // UI events
       $("player").addEventListener("change", updateUI);
       $("rows").addEventListener("change", updateUI);
 
-      // Sort toggle date
       $("sortDate").addEventListener("click", () => {
         sortDir = (sortDir === "desc") ? "asc" : "desc";
         updateUI();
       });
 
-      // Player filter
       $("playerFilter").addEventListener("input", (ev) => {
         const current = $("player").value;
         const filtered = applyPlayerFilter(allPlayers, ev.target.value);
         fillPlayerSelect(filtered, current);
-        // UI nur updaten, wenn eine Auswahl existiert
         if ($("player").value) updateUI();
+      });
+
+      $("retryChart").addEventListener("click", async () => {
+        // allow retry - maybe user disabled blocker etc.
+        await initChart();
       });
 
       // First render
       updateUI();
+
+      // Load ECharts after initial table render (so UI always shows something)
+      await initChart();
     });
   </script>
 </body>
