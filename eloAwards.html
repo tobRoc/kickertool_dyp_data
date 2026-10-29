@@ -173,13 +173,67 @@
       color: var(--text);
       margin: 4px 0 0 0;
       font-variant-numeric: tabular-nums;
-    }
-
-    .award-details{
+    }    .award-details{
       font-size: 12px;
       color: var(--muted);
       margin-top: 6px;
       line-height: 1.4;
+    }
+
+    .ranking-list{
+      list-style: none;
+      padding: 0;
+      margin: 8px 0 0 0;
+    }
+
+    .ranking-item{
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .ranking-item:last-child{
+      border-bottom: none;
+    }
+
+    .ranking-player{
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .ranking-value{
+      font-weight: 700;
+      color: var(--primary);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .expand-button{
+      background: none;
+      border: none;
+      color: var(--primary);
+      font-size: 12px;
+      cursor: pointer;
+      padding: 4px 8px;
+      margin-top: 8px;
+      font-weight: 600;
+      text-decoration: underline;
+    }
+
+    .expand-button:hover{
+      opacity: 0.7;
+    }
+
+    .rest-list{
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease;
+    }
+
+    .rest-list.expanded{
+      max-height: 1000px;
     }
 
     .small{
@@ -255,6 +309,13 @@
       box.textContent = "";
     }
 
+    function toggleExpand(id){
+      const el = document.getElementById(id);
+      if (el){
+        el.classList.toggle('expanded');
+      }
+    }
+
     // ===== Data load =====
     async function fetchData(){
       const candidates = [
@@ -322,6 +383,46 @@
         const card = document.createElement("div");
         card.className = "award-card";
 
+        // Erstelle die Top 3 Rangliste
+        let rankingHTML = '<ul class="ranking-list">';
+        
+        // Top 3
+        if (award.top_3 && award.top_3.length > 0) {
+          award.top_3.forEach((entry, idx) => {
+            rankingHTML += `
+              <li class="ranking-item">
+                <span class="ranking-player">${idx + 1}. ${entry.player}</span>
+                <span class="ranking-value">${entry.value}</span>
+              </li>
+            `;
+          });
+        }
+        
+        // Rest (aufklappbar)
+        if (award.rest && award.rest.length > 0) {
+          const restId = `rest-${awardKey}-${Math.random()}`;
+          rankingHTML += `
+            <li style="border-bottom: none; padding-top: 12px;">
+              <button class="expand-button" onclick="toggleExpand('${restId}')">
+                ➕ ${award.rest.length} weitere anzeigen
+              </button>
+              <ul class="rest-list" id="${restId}">
+          `;
+          
+          award.rest.forEach((entry, idx) => {
+            rankingHTML += `
+              <li class="ranking-item">
+                <span class="ranking-player">${3 + idx + 1}. ${entry.player}</span>
+                <span class="ranking-value">${entry.value}</span>
+              </li>
+            `;
+          });
+          
+          rankingHTML += '</ul></li>';
+        }
+        
+        rankingHTML += '</ul>';
+
         card.innerHTML = `
           <div class="award-header">
             <div class="award-icon">${award.icon}</div>
@@ -331,9 +432,7 @@
             </div>
           </div>
           <div class="award-body">
-            <p class="award-player">${award.player}</p>
-            <p class="award-value">${award.value}</p>
-            <p class="award-details">${award.details}</p>
+            ${rankingHTML}
           </div>
         `;
 

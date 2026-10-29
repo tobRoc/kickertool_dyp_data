@@ -86,11 +86,16 @@ def process_matches(matches, discipline,date):
             
             new_team1_elo = calculate_elo(team1_elo, team2_elo, team1_result)
             new_team2_elo = calculate_elo(team2_elo, team1_elo, team2_result)
-            
             elo_ratings[name1_team1][discipline] = elo_ratings[name1_team1][discipline] + (new_team1_elo - team1_elo)/2
             elo_ratings[name2_team1][discipline] = elo_ratings[name2_team1][discipline] + (new_team1_elo - team1_elo)/2
             elo_ratings[name1_team2][discipline] = elo_ratings[name1_team2][discipline] + (new_team2_elo - team2_elo)/2
             elo_ratings[name2_team2][discipline] = elo_ratings[name2_team2][discipline] + (new_team2_elo - team2_elo)/2
+            
+            # Speichere Match-Details für alle Spieler
+            player_data[name1_team1].append((date, name1_team1, elo_ratings[name1_team1][discipline], name2_team1, elo_ratings[name2_team1][discipline], name1_team2, elo_ratings[name1_team2][discipline], name2_team2, elo_ratings[name2_team2][discipline], result1, result2))
+            player_data[name2_team1].append((date, name1_team1, elo_ratings[name1_team1][discipline], name2_team1, elo_ratings[name2_team1][discipline], name1_team2, elo_ratings[name1_team2][discipline], name2_team2, elo_ratings[name2_team2][discipline], result1, result2))
+            player_data[name1_team2].append((date, name1_team1, elo_ratings[name1_team1][discipline], name2_team1, elo_ratings[name2_team1][discipline], name1_team2, elo_ratings[name1_team2][discipline], name2_team2, elo_ratings[name2_team2][discipline], result1, result2))
+            player_data[name2_team2].append((date, name1_team1, elo_ratings[name1_team1][discipline], name2_team1, elo_ratings[name2_team1][discipline], name1_team2, elo_ratings[name1_team2][discipline], name2_team2, elo_ratings[name2_team2][discipline], result1, result2))
         
             player_data[name1_team1].append((date, name1_team1, elo_ratings[name1_team1][discipline], name2_team1, elo_ratings[name2_team1][discipline], name1_team2, elo_ratings[name1_team2][discipline] , name2_team2, elo_ratings[name2_team2][discipline] , result1, result2))
             player_data[name2_team1].append((date, name1_team1, elo_ratings[name1_team1][discipline], name2_team1, elo_ratings[name2_team1][discipline], name1_team2, elo_ratings[name1_team2][discipline] , name2_team2, elo_ratings[name2_team2][discipline] , result1, result2))
@@ -119,12 +124,15 @@ def process_matches(matches, discipline,date):
             
             player1_elo = elo_ratings[name1][discipline]
             player2_elo = elo_ratings[name2][discipline]
-            
             new_player1_elo = calculate_elo(player1_elo, player2_elo, player1_result)
             new_player2_elo = calculate_elo(player2_elo, player1_elo, player2_result)
             
             elo_ratings[name1][discipline] = new_player1_elo
             elo_ratings[name2][discipline] = new_player2_elo
+            
+            # Speichere Match-Details für Einzel (Doppel-Format für Konsistenz)
+            player_data[name1].append((date, name1, new_player1_elo, name2, new_player2_elo, None, None, None, None, result1, result2))
+            player_data[name2].append((date, name1, new_player1_elo, name2, new_player2_elo, None, None, None, None, result1, result2))
 
 # Durchlaufen der Turnierdateien und Aktualisieren der Elo-Bewertungen
 for file_name in tournament_files:
