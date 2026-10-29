@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Elo Awards</title>
+
+  <style>
+    :root{
+      --bg: #f6f7fb;
+      --panel: #ffffff;
+      --text: #111827;
+      --muted: #6b7280;
+      --border: #e5e7eb;
+      --primary: #2563eb;
+      --radius: 14px;
+      --shadow: 0 8px 30px rgba(17, 24, 39, 0.08);
+    }
+
+    *{ box-sizing: border-box; }
+    html, body { height: 100%; }
+
+    body{
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      color: var(--text);
+      background: var(--bg);
+    }
+
+    /* Full width */
+    .page{
+      width: 100%;
+      padding: 14px 16px;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    .toolbar{
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      background: rgba(246,247,251,0.92);
+      backdrop-filter: blur(8px);
+      padding: 10px 0 14px;
+      margin-bottom: 12px;
+    }
+
+    .toolbar-inner{
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: flex-end;
+    }
+
+    .title{
+      font-size: 18px;
+      font-weight: 900;
+      margin-right: 10px;
+    }
+
+    .field{
+      display: grid;
+      gap: 6px;
+      min-width: 160px;
+    }
+
+    label{
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    select, input{
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--panel);
+      font-size: 14px;
+      outline: none;
+      min-width: 220px;
+    }
+
+    @media (max-width: 1100px){
+      select, input{ width: 100%; min-width: 220px; }
+    }
+
+    .loading{
+      padding: 12px 14px;
+      border: 1px dashed var(--border);
+      background: #fff;
+      color: var(--muted);
+      border-radius: 12px;
+      font-size: 13px;
+      display:none;
+    }
+
+    .error{
+      padding: 12px 14px;
+      border: 1px solid #fecaca;
+      background: #fff1f2;
+      color: #9f1239;
+      border-radius: 12px;
+      font-size: 13px;
+      white-space: pre-wrap;
+      display:none;
+    }
+
+    /* Awards Grid */
+    .awards-grid{
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 14px;
+      margin-top: 12px;
+    }
+
+    .award-card{
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 16px;
+      transition: all 0.2s ease;
+    }
+
+    .award-card:hover{
+      border-color: var(--primary);
+      box-shadow: 0 12px 40px rgba(37, 99, 235, 0.1);
+      transform: translateY(-2px);
+    }
+
+    .award-header{
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .award-icon{
+      font-size: 36px;
+      min-width: 44px;
+      text-align: center;
+    }
+
+    .award-title{
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
+      margin: 0;
+    }
+
+    .award-desc{
+      font-size: 12px;
+      color: var(--muted);
+      margin: 4px 0 0 0;
+    }
+
+    .award-body{
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+    }
+
+    .award-player{
+      font-size: 16px;
+      font-weight: 800;
+      color: var(--primary);
+      margin: 0 0 4px 0;
+      word-break: break-word;
+    }
+
+    .award-value{
+      font-size: 18px;
+      font-weight: 900;
+      color: var(--text);
+      margin: 4px 0 0 0;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .award-details{
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 6px;
+      line-height: 1.4;
+    }
+
+    .small{
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 20px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+    }
+
+    code{
+      background: rgba(17,24,39,0.04);
+      padding: 2px 6px;
+      border-radius: 8px;
+      border: 1px solid rgba(17,24,39,0.06);
+    }
+
+    @media (max-width: 700px){
+      .awards-grid{
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="page">
+    <div class="toolbar">
+      <div class="toolbar-inner">
+        <div class="title">🏆 Elo Awards</div>
+
+        <div class="field" style="min-width: 240px;">
+          <label for="discipline">Disziplin</label>
+          <select id="discipline"></select>
+        </div>
+      </div>
+
+      <div class="loading" id="loadingBox">Lade Daten …</div>
+      <div class="error" id="errorBox"></div>
+    </div>
+
+    <div class="awards-grid" id="awardsContainer"></div>
+
+    <div class="small">
+      Datenquelle: <code>eloAwards.json</code> (basierend auf <code>eloRangliste.json</code> und <code>eloRanglisteDetailed.json</code>)
+    </div>
+  </div>
+
+  <script>
+    "use strict";
+
+    // ===== State =====
+    let awardData = null;
+    let disciplines = [];
+    let currentDiscipline = "";
+
+    // ===== DOM helpers =====
+    const $ = (id) => document.getElementById(id);
+
+    function showLoading(show){ $("loadingBox").style.display = show ? "block" : "none"; }
+    function showError(msg){
+      const box = $("errorBox");
+      box.style.display = "block";
+      box.textContent = msg;
+    }
+    function clearError(){
+      const box = $("errorBox");
+      box.style.display = "none";
+      box.textContent = "";
+    }
+
+    // ===== Data load =====
+    async function fetchData(){
+      const candidates = [
+        "eloAwards.json",
+        "https://tobroc.github.io/kickertool_dyp_data/eloAwards.json"
+      ];
+      for (const url of candidates){
+        try{
+          const r = await fetch(url, { cache: "no-store" });
+          if (!r.ok) continue;
+          return await r.json();
+        }catch(e){}
+      }
+      return null;
+    }
+
+    // ===== UI: discipline select =====
+    function renderDisciplineControls(){
+      const sel = $("discipline");
+      sel.innerHTML = disciplines.map(d => `<option value="${d}">${d}</option>`).join("");
+      sel.value = currentDiscipline;
+      sel.onchange = () => {
+        currentDiscipline = sel.value;
+        renderAwards();
+      };
+    }
+
+    // ===== Render Awards =====
+    function renderAwards(){
+      const container = $("awardsContainer");
+      container.innerHTML = "";
+
+      if (!awardData || !awardData.awards[currentDiscipline]){
+        container.innerHTML = "<p style='color: var(--muted);'>Keine Awards für diese Disziplin verfügbar.</p>";
+        return;
+      }
+
+      const awards = awardData.awards[currentDiscipline];
+
+      // Definierte Reihenfolge der Awards
+      const awardOrder = [
+        'player_of_the_year',
+        'most_improved',
+        'ironman',
+        'best_teammate',
+        'comeback_king',
+        'rollercoaster',
+        'giant_killer',
+        'lucky_bastard',
+        'slow_starter'
+      ];
+
+      for (const awardKey of awardOrder){
+        if (!awards[awardKey]) continue;
+
+        const award = awards[awardKey];
+
+        const card = document.createElement("div");
+        card.className = "award-card";
+
+        card.innerHTML = `
+          <div class="award-header">
+            <div class="award-icon">${award.icon}</div>
+            <div>
+              <p class="award-title">${award.title}</p>
+              <p class="award-desc">${award.description}</p>
+            </div>
+          </div>
+          <div class="award-body">
+            <p class="award-player">${award.player}</p>
+            <p class="award-value">${award.value}</p>
+            <p class="award-details">${award.details}</p>
+          </div>
+        `;
+
+        container.appendChild(card);
+      }
+    }
+
+    // ===== Init =====
+    document.addEventListener("DOMContentLoaded", async () => {
+      showLoading(true);
+      clearError();
+
+      awardData = await fetchData();
+
+      showLoading(false);
+
+      if (!awardData){
+        showError("Fehler: eloAwards.json konnte nicht geladen werden.");
+        return;
+      }
+
+      if (!awardData.awards){
+        showError("Fehler: JSON-Format unerwartet. Erwartet: awards.");
+        return;
+      }
+
+      disciplines = Object.keys(awardData.awards).sort((a,b) => a.localeCompare(b, "de"));
+      
+      if (disciplines.length === 0){
+        showError("Fehler: Keine Disziplinen mit Awards gefunden.");
+        return;
+      }
+
+      currentDiscipline = disciplines[0];
+
+      renderDisciplineControls();
+      renderAwards();
+    });
+  </script>
+</body>
+</html>
