@@ -38,15 +38,18 @@ jobs:
         python downloadRes.py
         python rangliste.py
         python eloRangliste.py
+        python generateAwards.py
         ls -lax
         mkdir _site
         cp index.html _site/
         cp rangliste.html _site/
         cp eloRanglistePlayerGUI.html _site/
         cp eloRanglisteOverall.html _site/
+        cp eloAwards.html _site/
         cp rangliste.json _site/
         cp eloRangliste.json _site/
         cp eloRanglisteDetailed.json _site/
+        cp eloAwards.json _site/
         ls
         ls _site
     - name: Update JSON artifacts
@@ -57,6 +60,7 @@ jobs:
           rangliste.json
           eloRangliste.json
           eloRanglisteDetailed.json
+          eloAwards.json
     - name: Upload artifact
       uses: actions/upload-pages-artifact@v3
       with:
