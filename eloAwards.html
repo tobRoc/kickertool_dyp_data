@@ -207,9 +207,13 @@
 
 <body>
   <div class="page">
-    <div class="toolbar">
-      <div class="toolbar-inner">
+    <div class="toolbar">      <div class="toolbar-inner">
         <div class="title">🏆 Elo Awards</div>
+
+        <div class="field" style="min-width: 240px;">
+          <label for="year">Jahr</label>
+          <select id="year"></select>
+        </div>
 
         <div class="field" style="min-width: 240px;">
           <label for="discipline">Disziplin</label>
@@ -229,11 +233,11 @@
   </div>
 
   <script>
-    "use strict";
-
-    // ===== State =====
+    "use strict";    // ===== State =====
     let awardData = null;
+    let years = [];
     let disciplines = [];
+    let currentYear = "";
     let currentDiscipline = "";
 
     // ===== DOM helpers =====
@@ -265,30 +269,37 @@
         }catch(e){}
       }
       return null;
-    }
-
-    // ===== UI: discipline select =====
-    function renderDisciplineControls(){
-      const sel = $("discipline");
-      sel.innerHTML = disciplines.map(d => `<option value="${d}">${d}</option>`).join("");
-      sel.value = currentDiscipline;
-      sel.onchange = () => {
-        currentDiscipline = sel.value;
+    }    // ===== UI: year & discipline select =====
+    function renderYearDisciplineControls(){
+      const yearSel = $("year");
+      const discSel = $("discipline");
+      
+      yearSel.innerHTML = years.map(y => `<option value="${y}">${y}</option>`).join("");
+      discSel.innerHTML = disciplines.map(d => `<option value="${d}">${d}</option>`).join("");
+      
+      yearSel.value = currentYear;
+      discSel.value = currentDiscipline;
+      
+      yearSel.onchange = () => {
+        currentYear = yearSel.value;
         renderAwards();
       };
-    }
-
-    // ===== Render Awards =====
+      
+      discSel.onchange = () => {
+        currentDiscipline = discSel.value;
+        renderAwards();
+      };
+    }    // ===== Render Awards =====
     function renderAwards(){
       const container = $("awardsContainer");
       container.innerHTML = "";
 
-      if (!awardData || !awardData.awards[currentDiscipline]){
-        container.innerHTML = "<p style='color: var(--muted);'>Keine Awards für diese Disziplin verfügbar.</p>";
+      if (!awardData || !awardData.awards[currentYear] || !awardData.awards[currentYear][currentDiscipline]){
+        container.innerHTML = "<p style='color: var(--muted);'>Keine Awards für diese Auswahl verfügbar.</p>";
         return;
       }
 
-      const awards = awardData.awards[currentDiscipline];
+      const awards = awardData.awards[currentYear][currentDiscipline];
 
       // Definierte Reihenfolge der Awards
       const awardOrder = [
@@ -328,9 +339,7 @@
 
         container.appendChild(card);
       }
-    }
-
-    // ===== Init =====
+    }    // ===== Init =====
     document.addEventListener("DOMContentLoaded", async () => {
       showLoading(true);
       clearError();
@@ -349,8 +358,22 @@
         return;
       }
 
-      disciplines = Object.keys(awardData.awards).sort((a,b) => a.localeCompare(b, "de"));
+      // Lade Jahre und Disziplinen
+      years = awardData.years || Object.keys(awardData.awards).sort().reverse();
       
+      if (years.length === 0){
+        showError("Fehler: Keine Jahre mit Awards gefunden.");
+        return;
+      }
+
+      // Setze auf das neueste Jahr
+      currentYear = awardData.latest_year || years[0];
+
+      // Lade Disziplinen für das ausgewählte Jahr
+      if (awardData.awards[currentYear]){
+        disciplines = Object.keys(awardData.awards[currentYear]).sort((a,b) => a.localeCompare(b, "de"));
+      }
+
       if (disciplines.length === 0){
         showError("Fehler: Keine Disziplinen mit Awards gefunden.");
         return;
@@ -358,7 +381,7 @@
 
       currentDiscipline = disciplines[0];
 
-      renderDisciplineControls();
+      renderYearDisciplineControls();
       renderAwards();
     });
   </script>
