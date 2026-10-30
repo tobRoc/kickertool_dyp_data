@@ -95,18 +95,19 @@ def process_matches(matches, discipline, date):
             # Berechne Delta
             elo_delta_team1 = (new_team1_elo - team1_elo) / 2
             elo_delta_team2 = (new_team2_elo - team2_elo) / 2
-            
-            # Update Elo
+              # Update Elo
             elo_ratings[name1_team1][discipline] = elo1_before + elo_delta_team1
             elo_ratings[name2_team1][discipline] = elo2_before + elo_delta_team1
             elo_ratings[name1_team2][discipline] = elo3_before + elo_delta_team2
             elo_ratings[name2_team2][discipline] = elo4_before + elo_delta_team2
             
-            # Speichere nur VOR/NACH Elo
-            player_data[name1_team1].append((date, elo1_before, elo_ratings[name1_team1][discipline]))
-            player_data[name2_team1].append((date, elo2_before, elo_ratings[name2_team1][discipline]))
-            player_data[name1_team2].append((date, elo3_before, elo_ratings[name1_team2][discipline]))
-            player_data[name2_team2].append((date, elo4_before, elo_ratings[name2_team2][discipline]))
+            # Speichere Match-Details mit allen Infos (notwendig für Awards)
+            # Format: (date, p1, elo1_before, p2, elo2_before, p3, elo3_before, p4, elo4_before, result1, result2)
+            match_tuple = (date, name1_team1, elo1_before, name2_team1, elo2_before, name1_team2, elo3_before, name2_team2, elo4_before, result1, result2)
+            player_data[name1_team1].append(match_tuple)
+            player_data[name2_team1].append(match_tuple)
+            player_data[name1_team2].append(match_tuple)
+            player_data[name2_team2].append(match_tuple)
                 
         elif len(team1) == 1 and len(team2) == 1 and len(result) == 2:
             # Einzel
