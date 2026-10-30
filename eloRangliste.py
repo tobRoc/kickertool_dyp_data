@@ -33,8 +33,6 @@ tournament_files.sort(key=get_tournament_date)
 # Elo-Bewertungen für jeden Spieler in jeder Disziplin
 elo_ratings = defaultdict(lambda: defaultdict(lambda: INITIAL_ELO))
 games_played = defaultdict(lambda: defaultdict(int))
-
-# Spielerdaten
 player_data = defaultdict(list)
 
 # Funktion zur Initialisierung der Elo-Bewertung für Spieler
@@ -43,13 +41,11 @@ def initialize_elo(player, discipline):
         elo_ratings[player][discipline] = INITIAL_ELO
 
 # Funktion zur Verarbeitung von Matches
-def process_matches(matches, discipline,date):
+def process_matches(matches, discipline, date):
     for match in matches:
         if 'team1' not in match or 'result' not in match:
             continue
-        if match['team1'] is None:
-            continue
-        if match['team2'] is None:
+        if match['team1'] is None or match['team2'] is None:
             continue
         
         team1 = [(player['_id'], player['name']) for player in match['team1']['players']]
@@ -62,7 +58,7 @@ def process_matches(matches, discipline,date):
             (player1_team2, name1_team2), (player2_team2, name2_team2) = team2
             result1, result2 = result
             
-            # Initialisieren der Elo-Bewertungen für alle Spieler
+            # Initialisieren
             initialize_elo(name1_team1, discipline)
             initialize_elo(name2_team1, discipline)
             initialize_elo(name1_team2, discipline)
@@ -74,6 +70,7 @@ def process_matches(matches, discipline,date):
             games_played[name1_team2][discipline] += 1
             games_played[name2_team2][discipline] += 1
             
+            # Bestimme Gewinner
             if result1 > result2:
                 team1_result, team2_result = 1, 0
             elif result1 < result2:
@@ -81,27 +78,42 @@ def process_matches(matches, discipline,date):
             else:
                 team1_result, team2_result = 0.5, 0.5
             
-            team1_elo = (elo_ratings[name1_team1][discipline] + elo_ratings[name2_team1][discipline]) / 2
-            team2_elo = (elo_ratings[name1_team2][discipline] + elo_ratings[name2_team2][discipline]) / 2
+            # Speichere ELO VOR dem Match
+            elo1_before = elo_ratings[name1_team1][discipline]
+            elo2_before = elo_ratings[name2_team1][discipline]
+            elo3_before = elo_ratings[name1_team2][discipline]
+            elo4_before = elo_ratings[name2_team2][discipline]
             
+            # Berechne durchschnittliche Elo
+            team1_elo = (elo1_before + elo2_before) / 2
+            team2_elo = (elo3_before + elo4_before) / 2
+            
+            # Berechne neue Elo
             new_team1_elo = calculate_elo(team1_elo, team2_elo, team1_result)
             new_team2_elo = calculate_elo(team2_elo, team1_elo, team2_result)
-            elo_ratings[name1_team1][discipline] = elo_ratings[name1_team1][discipline] + (new_team1_elo - team1_elo)/2
-            elo_ratings[name2_team1][discipline] = elo_ratings[name2_team1][discipline] + (new_team1_elo - team1_elo)/2
-            elo_ratings[name1_team2][discipline] = elo_ratings[name1_team2][discipline] + (new_team2_elo - team2_elo)/2
-            elo_ratings[name2_team2][discipline] = elo_ratings[name2_team2][discipline] + (new_team2_elo - team2_elo)/2
-              # Speichere Match-Details für alle Spieler
-            player_data[name1_team1].append((date, name1_team1, elo_ratings[name1_team1][discipline], name2_team1, elo_ratings[name2_team1][discipline], name1_team2, elo_ratings[name1_team2][discipline], name2_team2, elo_ratings[name2_team2][discipline], result1, result2))
-            player_data[name2_team1].append((date, name1_team1, elo_ratings[name1_team1][discipline], name2_team1, elo_ratings[name2_team1][discipline], name1_team2, elo_ratings[name1_team2][discipline], name2_team2, elo_ratings[name2_team2][discipline], result1, result2))
-            player_data[name1_team2].append((date, name1_team1, elo_ratings[name1_team1][discipline], name2_team1, elo_ratings[name2_team1][discipline], name1_team2, elo_ratings[name1_team2][discipline], name2_team2, elo_ratings[name2_team2][discipline], result1, result2))
-            player_data[name2_team2].append((date, name1_team1, elo_ratings[name1_team1][discipline], name2_team1, elo_ratings[name2_team1][discipline], name1_team2, elo_ratings[name1_team2][discipline], name2_team2, elo_ratings[name2_team2][discipline], result1, result2))
+            
+            # Berechne Delta
+            elo_delta_team1 = (new_team1_elo - team1_elo) / 2
+            elo_delta_team2 = (new_team2_elo - team2_elo) / 2
+            
+            # Update Elo
+            elo_ratings[name1_team1][discipline] = elo1_before + elo_delta_team1
+            elo_ratings[name2_team1][discipline] = elo2_before + elo_delta_team1
+            elo_ratings[name1_team2][discipline] = elo3_before + elo_delta_team2
+            elo_ratings[name2_team2][discipline] = elo4_before + elo_delta_team2
+            
+            # Speichere nur VOR/NACH Elo
+            player_data[name1_team1].append((date, elo1_before, elo_ratings[name1_team1][discipline]))
+            player_data[name2_team1].append((date, elo2_before, elo_ratings[name2_team1][discipline]))
+            player_data[name1_team2].append((date, elo3_before, elo_ratings[name1_team2][discipline]))
+            player_data[name2_team2].append((date, elo4_before, elo_ratings[name2_team2][discipline]))
                 
         elif len(team1) == 1 and len(team2) == 1 and len(result) == 2:
             # Einzel
             (player1, name1), (player2, name2) = team1[0], team2[0]
             result1, result2 = result
             
-            # Initialisieren der Elo-Bewertungen für alle Spieler
+            # Initialisieren
             initialize_elo(name1, discipline)
             initialize_elo(name2, discipline)
             
@@ -109,6 +121,7 @@ def process_matches(matches, discipline,date):
             games_played[name1][discipline] += 1
             games_played[name2][discipline] += 1
             
+            # Bestimme Gewinner
             if result1 > result2:
                 player1_result, player2_result = 1, 0
             elif result1 < result2:
@@ -116,19 +129,23 @@ def process_matches(matches, discipline,date):
             else:
                 player1_result, player2_result = 0.5, 0.5
             
-            player1_elo = elo_ratings[name1][discipline]
-            player2_elo = elo_ratings[name2][discipline]
-            new_player1_elo = calculate_elo(player1_elo, player2_elo, player1_result)
-            new_player2_elo = calculate_elo(player2_elo, player1_elo, player2_result)
+            # Speichere ELO VOR
+            player1_elo_before = elo_ratings[name1][discipline]
+            player2_elo_before = elo_ratings[name2][discipline]
             
+            # Berechne neue Elo
+            new_player1_elo = calculate_elo(player1_elo_before, player2_elo_before, player1_result)
+            new_player2_elo = calculate_elo(player2_elo_before, player1_elo_before, player2_result)
+            
+            # Update
             elo_ratings[name1][discipline] = new_player1_elo
             elo_ratings[name2][discipline] = new_player2_elo
             
-            # Speichere Match-Details für Einzel (Doppel-Format für Konsistenz)
-            player_data[name1].append((date, name1, new_player1_elo, name2, new_player2_elo, None, None, None, None, result1, result2))
-            player_data[name2].append((date, name1, new_player1_elo, name2, new_player2_elo, None, None, None, None, result1, result2))
+            # Speichere nur VOR/NACH Elo
+            player_data[name1].append((date, player1_elo_before, new_player1_elo))
+            player_data[name2].append((date, player2_elo_before, new_player2_elo))
 
-# Durchlaufen der Turnierdateien und Aktualisieren der Elo-Bewertungen
+# Durchlaufen der Turnierdateien
 for file_name in tournament_files:
     file_path = os.path.join(tournaments_dir, file_name)
     with open(file_path, 'r', encoding='utf-8') as file:
@@ -138,7 +155,7 @@ for file_name in tournament_files:
     date = parser.parse(tournament_data['createdAt']).strftime('%Y-%m-%d')
     
     # Verarbeiten der Qualifikationsspiele
-    if 'qualifying' in tournament_data and 'rounds' in tournament_data['qualifying'][0]:
+    if 'qualifying' in tournament_data and len(tournament_data['qualifying']) > 0 and 'rounds' in tournament_data['qualifying'][0]:
         for round_data in tournament_data['qualifying'][0]['rounds']:
             if 'matches' in round_data:
                 process_matches(round_data['matches'], discipline, date)
@@ -173,7 +190,7 @@ with open(output_csv_path, 'w', newline='', encoding='utf-8') as csvfile:
         for rank, (player, elo) in enumerate(sorted_players, start=1):
             csvwriter.writerow([discipline, rank, player, f"{elo:.2f}"])
 
-# Speichern der Daten in einer JSON-Datei
+# Speichern der Daten in JSON
 data = {
     "elo_ratings": elo_ratings,
     "games_played": games_played,
@@ -182,10 +199,12 @@ data = {
 with open('eloRangliste.json', 'w', encoding='utf-8') as f:
     json.dump(data, f, ensure_ascii=False, indent=4)
 
-# Speichern der detaillierten Spieler-Daten in einer separaten JSON-Datei
+# Speichern der detaillierten Spieler-Daten
 detailed_data = {
     "player_data": player_data
 }
 
 with open('eloRanglisteDetailed.json', 'w', encoding='utf-8') as f:
     json.dump(detailed_data, f, ensure_ascii=False, indent=4)
+
+print("Fertig!")
