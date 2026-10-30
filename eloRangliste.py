@@ -90,17 +90,11 @@ def process_matches(matches, discipline,date):
             elo_ratings[name2_team1][discipline] = elo_ratings[name2_team1][discipline] + (new_team1_elo - team1_elo)/2
             elo_ratings[name1_team2][discipline] = elo_ratings[name1_team2][discipline] + (new_team2_elo - team2_elo)/2
             elo_ratings[name2_team2][discipline] = elo_ratings[name2_team2][discipline] + (new_team2_elo - team2_elo)/2
-            
-            # Speichere Match-Details für alle Spieler
+              # Speichere Match-Details für alle Spieler
             player_data[name1_team1].append((date, name1_team1, elo_ratings[name1_team1][discipline], name2_team1, elo_ratings[name2_team1][discipline], name1_team2, elo_ratings[name1_team2][discipline], name2_team2, elo_ratings[name2_team2][discipline], result1, result2))
             player_data[name2_team1].append((date, name1_team1, elo_ratings[name1_team1][discipline], name2_team1, elo_ratings[name2_team1][discipline], name1_team2, elo_ratings[name1_team2][discipline], name2_team2, elo_ratings[name2_team2][discipline], result1, result2))
             player_data[name1_team2].append((date, name1_team1, elo_ratings[name1_team1][discipline], name2_team1, elo_ratings[name2_team1][discipline], name1_team2, elo_ratings[name1_team2][discipline], name2_team2, elo_ratings[name2_team2][discipline], result1, result2))
             player_data[name2_team2].append((date, name1_team1, elo_ratings[name1_team1][discipline], name2_team1, elo_ratings[name2_team1][discipline], name1_team2, elo_ratings[name1_team2][discipline], name2_team2, elo_ratings[name2_team2][discipline], result1, result2))
-        
-            player_data[name1_team1].append((date, name1_team1, elo_ratings[name1_team1][discipline], name2_team1, elo_ratings[name2_team1][discipline], name1_team2, elo_ratings[name1_team2][discipline] , name2_team2, elo_ratings[name2_team2][discipline] , result1, result2))
-            player_data[name2_team1].append((date, name1_team1, elo_ratings[name1_team1][discipline], name2_team1, elo_ratings[name2_team1][discipline], name1_team2, elo_ratings[name1_team2][discipline] , name2_team2, elo_ratings[name2_team2][discipline] , result1, result2))
-            player_data[name1_team2].append((date, name1_team1, elo_ratings[name1_team1][discipline], name2_team1, elo_ratings[name2_team1][discipline], name1_team2, elo_ratings[name1_team2][discipline] , name2_team2, elo_ratings[name2_team2][discipline] , result1, result2))
-            player_data[name2_team2].append((date, name1_team1, elo_ratings[name1_team1][discipline], name2_team1, elo_ratings[name2_team1][discipline], name1_team2, elo_ratings[name1_team2][discipline] , name2_team2, elo_ratings[name2_team2][discipline] , result1, result2))
                 
         elif len(team1) == 1 and len(team2) == 1 and len(result) == 2:
             # Einzel
